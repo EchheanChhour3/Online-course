@@ -10,6 +10,29 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@": "./",
+      "@/components": "./components",
+      "@/lib": "./lib",
+      "@/app": "./app",
+      "@/services": "./services",
+      "@/public": "./public",
+    };
+    return config;
+  },
+  turbopack: {
+    // Turbopack configuration for aliases
+    resolveAlias: {
+      "@": "./",
+      "@/components": "./components",
+      "@/lib": "./lib",
+      "@/app": "./app",
+      "@/services": "./services",
+      "@/public": "./public",
+    },
+  },
 };
 
 export default nextConfig;
