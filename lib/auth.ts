@@ -12,7 +12,9 @@ declare module "next-auth" {
       image?: string | null;
       role?: string[];
       status?: string;
+      full_name?: string;
     };
+    accessToken?: string;
   }
 
   interface User {
@@ -21,6 +23,7 @@ declare module "next-auth" {
     name?: string;
     role?: string[];
     status?: string;
+    full_name?: string;
   }
 }
 
@@ -50,11 +53,18 @@ export const config = {
           const email = credentials.email as string;
           const password = credentials.password as string;
 
+          console.log("NextAuth authorize called with:", {
+            email,
+            password: "***",
+          });
+
           // Call the real API
           const response = await login({ email, password });
+          console.log("NextAuth login response:", response);
 
           if (response.status === "OK" && response.payload.user) {
             const user = response.payload.user;
+            console.log("NextAuth login successful for:", user.email);
             return {
               id: user.user_id.toString(),
               email: user.email,
@@ -65,6 +75,7 @@ export const config = {
             };
           }
 
+          console.log("NextAuth login failed - invalid response:", response);
           return null;
         } catch (error) {
           console.error("Auth error:", error);
@@ -86,6 +97,7 @@ export const config = {
         token.role = user.role;
         token.status = user.status;
         token.accessToken = user.accessToken;
+        token.full_name = user.full_name;
       }
       return token;
     },
@@ -96,7 +108,9 @@ export const config = {
           id: token.id as string,
           role: token.role,
           status: token.status,
+          full_name: token.full_name,
         };
+        session.accessToken = token.accessToken;
       }
       return session;
     },

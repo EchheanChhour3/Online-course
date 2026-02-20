@@ -3,7 +3,13 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-
+/* app/globals.css */
+@layer components {
+  /* Fixes the bunching of the day headers and date grid */
+  .rdp-vhidden {
+    @apply hidden;
+  }
+}
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

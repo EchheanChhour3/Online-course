@@ -7,7 +7,6 @@ export async function registerUser(userData: RegisterRequest) {
   console.log("registerUser action called with:", userData);
   try {
     const result = await register(userData);
-    console.log("leang", result);
     return { success: true, data: result };
   } catch (error) {
     console.error("Registration action error:", error);
