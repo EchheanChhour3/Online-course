@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar as CalendarIcon, ChevronLeft } from "lucide-react"; // Renamed for clarity
+import { format } from "date-fns";
+import { ChevronDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DatePickerModern } from "@/components/ui/date-picker-modern";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -14,14 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useEnrollments } from "@/contexts/enrollment-context";
 
 const courses = [
   { value: "html", label: "HTML" },
@@ -39,6 +40,7 @@ const genders = [
 
 export default function CreateEnrollmentPage() {
   const router = useRouter();
+  const { addEnrollment } = useEnrollments();
   const [formData, setFormData] = useState({
     course: "",
     studentName: "",
@@ -49,7 +51,10 @@ export default function CreateEnrollmentPage() {
     additionalNote: "",
   });
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (
+    field: string,
+    value: string | Date | undefined,
+  ) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -58,7 +63,16 @@ export default function CreateEnrollmentPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form data:", formData);
+    if (!formData.enrollmentDate) return;
+    addEnrollment({
+      studentName: formData.studentName,
+      email: formData.email,
+      phoneNumber: formData.phoneNumber,
+      gender: formData.gender,
+      course: formData.course,
+      enrollmentDate: format(formData.enrollmentDate, "yyyy-MM-dd"),
+      additionalNote: formData.additionalNote,
+    });
     router.push("/dashboard/enrollment");
   };
 
@@ -170,33 +184,36 @@ export default function CreateEnrollmentPage() {
             />
           </div>
 
-          {/* Enrollment Date - Full Width */}
+          {/* Enrollment Date - Full Width (react-day-picker via Calendar) */}
           <div className="space-y-2 md:col-span-2">
             <Label>Enrollment Date</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
+                  data-empty={!formData.enrollmentDate}
                   className={cn(
-                    "w-full justify-start text-left font-normal h-11 border-gray-300",
-                    !formData.enrollmentDate && "text-muted-foreground",
+                    "w-full h-11 justify-between text-left font-normal border-gray-300",
+                    "data-[empty=true]:text-muted-foreground",
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
                   {formData.enrollmentDate ? (
                     format(formData.enrollmentDate, "PPP")
                   ) : (
                     <span>Pick a date</span>
                   )}
+                  <ChevronDownIcon />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CalendarComponent
-                  mode="single"
+              <PopoverContent
+                className="w-auto min-w-[320px] p-0 overflow-visible"
+                align="start"
+                sideOffset={8}
+              >
+                <DatePickerModern
                   selected={formData.enrollmentDate}
                   onSelect={(date) => handleInputChange("enrollmentDate", date)}
-                  initialFocus
-                  className="rounded-md border"
+                  defaultMonth={formData.enrollmentDate ?? new Date()}
                 />
               </PopoverContent>
             </Popover>

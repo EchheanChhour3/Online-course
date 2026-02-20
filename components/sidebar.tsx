@@ -23,6 +23,7 @@ import {
   Grid3x3,
   BookOpen,
   Star,
+  Users,
 } from "lucide-react";
 
 interface FavoriteCourse {
@@ -129,6 +130,11 @@ export default function EnrollmentSidebar({
       icon: <BookOpen className="w-5 h-5" />,
       href: "/dashboard/enrollment",
     },
+    {
+      label: "Teachers",
+      icon: <Users className="w-5 h-5" />,
+      href: "/dashboard/teachers",
+    },
   ];
 
   return (
@@ -187,7 +193,9 @@ export default function EnrollmentSidebar({
         )}
         <nav className="space-y-2">
           {mainNavItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
             return (
               <button
                 key={item.href}

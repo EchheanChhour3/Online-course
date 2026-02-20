@@ -3,6 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { CategoryProvider } from "@/contexts/category-context";
+import { EnrollmentProvider } from "@/contexts/enrollment-context";
+import { TeacherProvider } from "@/contexts/teacher-context";
 import EnrollmentSidebar from "../../components/sidebar";
 
 export default function DashboardLayout({
@@ -43,7 +46,11 @@ export default function DashboardLayout({
       <div
         className={`transition-all duration-300 ${isCollapsed ? "pl-20" : "pl-80"}`}
       >
-        {children}
+        <CategoryProvider>
+          <EnrollmentProvider>
+            <TeacherProvider>{children}</TeacherProvider>
+          </EnrollmentProvider>
+        </CategoryProvider>
       </div>
     </div>
   );

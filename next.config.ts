@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       ...config.resolve.alias,
       "@": "./",
       "@/components": "./components",
+      "@/contexts": "./contexts",
       "@/lib": "./lib",
       "@/app": "./app",
       "@/services": "./services",
@@ -27,6 +28,7 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       "@": "./",
       "@/components": "./components",
+      "@/contexts": "./contexts",
       "@/lib": "./lib",
       "@/app": "./app",
       "@/services": "./services",

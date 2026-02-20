@@ -14,7 +14,7 @@ export default async function middleware(req: NextRequest) {
 
   // Redirect authenticated users from auth pages
   if ((pathname === "/login" || pathname === "/register") && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    return NextResponse.redirect(new URL("/dashboard/course", req.url));
   }
 
   return NextResponse.next();
