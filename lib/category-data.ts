@@ -1,8 +1,24 @@
+export interface CourseLesson {
+  id: string;
+  title: string;
+  duration: string;
+  videoUrl?: string;
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  lessons: CourseLesson[];
+}
+
 export interface CategoryCourse {
+  id?: string;
   title: string;
   instructor: string;
   imageSrc?: string;
   slug?: string;
+  description?: string;
+  modules?: CourseModule[];
 }
 
 export interface Category {

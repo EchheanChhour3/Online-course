@@ -24,6 +24,7 @@ import {
   BookOpen,
   Star,
   Users,
+  FolderEdit,
 } from "lucide-react";
 
 interface FavoriteCourse {
@@ -119,6 +120,11 @@ export default function EnrollmentSidebar({
       label: "Course",
       icon: <FileText className="w-5 h-5" />,
       href: "/dashboard/course",
+    },
+    {
+      label: "Manage Courses",
+      icon: <FolderEdit className="w-5 h-5" />,
+      href: "/dashboard/course/manage",
     },
     {
       label: "Category",

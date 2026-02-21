@@ -13,6 +13,8 @@ import {
   setStoredCategories,
   type Category,
   type CategoryCourse,
+  type CourseModule,
+  type CourseLesson,
 } from "@/lib/category-data";
 
 interface CategoryContextValue {
@@ -20,7 +22,7 @@ interface CategoryContextValue {
   addCategory: (category: Omit<Category, "id">) => void;
   updateCategory: (id: string, updates: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
-  addCourseToCategory: (categoryId: string, course: CategoryCourse) => void;
+  addCourseToCategory: (categoryId: string, course: Omit<CategoryCourse, "id">) => void;
   updateCourseInCategory: (
     categoryId: string,
     courseIndex: number,
@@ -28,6 +30,39 @@ interface CategoryContextValue {
   ) => void;
   removeCourseFromCategory: (categoryId: string, courseIndex: number) => void;
   getCategory: (id: string) => Category | undefined;
+  findCourse: (categorySlug: string, courseSlug: string) => { category: Category; course: CategoryCourse; index: number } | null;
+  updateCourseContent: (
+    categorySlug: string,
+    courseSlug: string,
+    modules: CourseModule[]
+  ) => void;
+  addModuleToCourse: (categorySlug: string, courseSlug: string, module: Omit<CourseModule, "id">) => void;
+  updateModuleInCourse: (
+    categorySlug: string,
+    courseSlug: string,
+    moduleIndex: number,
+    updates: Partial<CourseModule>
+  ) => void;
+  removeModuleFromCourse: (categorySlug: string, courseSlug: string, moduleIndex: number) => void;
+  addLessonToModule: (
+    categorySlug: string,
+    courseSlug: string,
+    moduleIndex: number,
+    lesson: Omit<CourseLesson, "id">
+  ) => void;
+  updateLessonInModule: (
+    categorySlug: string,
+    courseSlug: string,
+    moduleIndex: number,
+    lessonIndex: number,
+    updates: Partial<CourseLesson>
+  ) => void;
+  removeLessonFromModule: (
+    categorySlug: string,
+    courseSlug: string,
+    moduleIndex: number,
+    lessonIndex: number
+  ) => void;
   refresh: () => void;
 }
 
@@ -94,13 +129,13 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addCourseToCategory = useCallback(
-    (categoryId: string, course: CategoryCourse) => {
-      const slug =
-        course.slug || slugify(course.title);
+    (categoryId: string, course: Omit<CategoryCourse, "id">) => {
+      const slug = course.slug || slugify(course.title);
+      const id = generateId();
       setCategories((prev) =>
         prev.map((c) =>
           c.id === categoryId
-            ? { ...c, courses: [...c.courses, { ...course, slug }] }
+            ? { ...c, courses: [...c.courses, { ...course, id, slug, modules: course.modules ?? [] }] }
             : c
         )
       );
@@ -151,6 +186,232 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
     [categories]
   );
 
+  const findCourse = useCallback(
+    (categorySlug: string, courseSlug: string) => {
+      const category = categories.find((c) => c.slug === categorySlug);
+      if (!category) return null;
+      const index = category.courses.findIndex(
+        (co) => (co.slug || slugify(co.title)) === courseSlug
+      );
+      if (index < 0) return null;
+      return { category, course: category.courses[index], index };
+    },
+    [categories]
+  );
+
+  const updateCourseContent = useCallback(
+    (categorySlug: string, courseSlug: string, modules: CourseModule[]) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co, i) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const addModuleToCourse = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      module: Omit<CourseModule, "id">
+    ) => {
+      const moduleId = generateId();
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = co.modules ?? [];
+                  return {
+                    ...co,
+                    modules: [
+                      ...modules,
+                      { ...module, id: moduleId, lessons: module.lessons ?? [] },
+                    ],
+                  };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const updateModuleInCourse = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      moduleIndex: number,
+      updates: Partial<CourseModule>
+    ) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = (co.modules ?? []).map((m, i) =>
+                    i === moduleIndex ? { ...m, ...updates } : m
+                  );
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const removeModuleFromCourse = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      moduleIndex: number
+    ) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = (co.modules ?? []).filter(
+                    (_, i) => i !== moduleIndex
+                  );
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const addLessonToModule = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      moduleIndex: number,
+      lesson: Omit<CourseLesson, "id">
+    ) => {
+      const lessonId = generateId();
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = (co.modules ?? []).map((m, i) =>
+                    i === moduleIndex
+                      ? {
+                          ...m,
+                          lessons: [
+                            ...m.lessons,
+                            { ...lesson, id: lessonId },
+                          ],
+                        }
+                      : m
+                  );
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const updateLessonInModule = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      moduleIndex: number,
+      lessonIndex: number,
+      updates: Partial<CourseLesson>
+    ) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = (co.modules ?? []).map((m, i) =>
+                    i === moduleIndex
+                      ? {
+                          ...m,
+                          lessons: m.lessons.map((l, li) =>
+                            li === lessonIndex ? { ...l, ...updates } : l
+                          ),
+                        }
+                      : m
+                  );
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
+  const removeLessonFromModule = useCallback(
+    (
+      categorySlug: string,
+      courseSlug: string,
+      moduleIndex: number,
+      lessonIndex: number
+    ) => {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.slug === categorySlug
+            ? {
+                ...c,
+                courses: c.courses.map((co) => {
+                  const coSlug = co.slug || slugify(co.title);
+                  if (coSlug !== courseSlug) return co;
+                  const modules = (co.modules ?? []).map((m, i) =>
+                    i === moduleIndex
+                      ? {
+                          ...m,
+                          lessons: m.lessons.filter((_, li) => li !== lessonIndex),
+                        }
+                      : m
+                  );
+                  return { ...co, modules };
+                }),
+              }
+            : c
+        )
+      );
+    },
+    []
+  );
+
   return (
     <CategoryContext.Provider
       value={{
@@ -162,6 +423,14 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
         updateCourseInCategory,
         removeCourseFromCategory,
         getCategory,
+        findCourse,
+        updateCourseContent,
+        addModuleToCourse,
+        updateModuleInCourse,
+        removeModuleFromCourse,
+        addLessonToModule,
+        updateLessonInModule,
+        removeLessonFromModule,
         refresh,
       }}
     >
