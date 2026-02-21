@@ -5,12 +5,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   PageHeader,
-  RecommendedCourseBanner,
-  CoursesSectionHeader,
   CourseGrid,
   type CourseCardProps,
 } from "@/components/course";
-import { useRole } from "@/contexts/role-context";
 import { getCourses, type CourseItem } from "@/services/course.service";
 import {
   getEnrollmentsByUserId,
@@ -19,16 +16,14 @@ import {
 } from "@/services/enrollment.service";
 import { toast } from "sonner";
 
-export default function CoursePage() {
+export default function AllCoursesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { role } = useRole();
-  const userName = session?.user?.name?.split(" ")[0] || "Andrew";
   const userId = session?.user?.id ? Number(session.user.id) : null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allCourses, setAllCourses] = useState<CourseItem[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentItem[]>([]);
   const [enrollingId, setEnrollingId] = useState<number | null>(null);
 
@@ -50,16 +45,16 @@ export default function CoursePage() {
     setError(null);
     try {
       const [coursesRes, enrollmentsList] = await Promise.all([
-        getCourses(token, { page: 1, size: 100 }),
+        getCourses(token, { page: 1, size: 500 }),
         userId ? getEnrollmentsByUserId(token, userId) : Promise.resolve([]),
       ]);
-      setAllCourses(coursesRes.payload?.items ?? []);
+      setCourses(coursesRes.payload?.items ?? []);
       setEnrollments(Array.isArray(enrollmentsList) ? enrollmentsList : []);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load courses"
       );
-      setAllCourses([]);
+      setCourses([]);
       setEnrollments([]);
     } finally {
       setLoading(false);
@@ -70,20 +65,6 @@ export default function CoursePage() {
     if (status === "loading") return;
     fetchData();
   }, [fetchData, status]);
-
-  const handleSearch = (value: string) => {
-    // Client-side filter is handled via search state if needed
-    console.log("Search:", value);
-  };
-
-  const handleStartLearning = () => {
-    const firstEnrolled = enrollments[0];
-    if (firstEnrolled?.course_id) {
-      router.push(`/dashboard/course/${firstEnrolled.course_id}`);
-    } else {
-      router.push("/dashboard/course/basic-ux");
-    }
-  };
 
   const handleContinue = (courseId: number) => {
     router.push(`/dashboard/course/${courseId}`);
@@ -112,50 +93,20 @@ export default function CoursePage() {
   };
 
   const enrolledCourseIds = new Set(enrollments.map((e) => e.course_id));
-  const courseById = new Map(allCourses.map((c) => [c.course_id, c]));
 
-  const inProgressCourses: CourseCardProps[] = enrollments.map((e) => {
-    const course = courseById.get(e.course_id);
-    const author = course?.instructor_name ?? "—";
-    return {
-      variant: "progress",
-      title: e.course_name ?? course?.course_name ?? "Untitled",
-      author,
-      progress: 0, // API could provide progress later
-      courseId: e.course_id,
-      onViewCourse: handleViewCourse,
-      onContinue: () => handleContinue(e.course_id),
-    };
-  });
-
-  const availableCourses: CourseCardProps[] = allCourses
-    .filter((c) => !enrolledCourseIds.has(c.course_id))
-    .map((c) => ({
-      variant: "enrollment" as const,
+  const courseCards: CourseCardProps[] = courses.map((c) => {
+    const isEnrolled = enrolledCourseIds.has(c.course_id);
+    const base = {
       title: c.course_name ?? "Untitled",
       author: c.instructor_name ?? "—",
-      rating: 4.5,
-      duration: undefined,
       courseId: c.course_id,
       onViewCourse: handleViewCourse,
-      onEnroll: () => handleEnroll(c.course_id),
-      hideActions: false,
-    }));
-
-  const catalogCourses: CourseCardProps[] = allCourses.map((c) => ({
-    variant: "enrollment" as const,
-    title: c.course_name ?? "Untitled",
-    author: c.instructor_name ?? "—",
-    rating: 4.5,
-    duration: undefined,
-    courseId: c.course_id,
-    onViewCourse: handleViewCourse,
-    onEnroll: () => handleEnroll(c.course_id),
-    hideActions: role === "admin",
-  }));
-
-  const isStudent = role === "student";
-  const isTeacher = role === "teacher";
+      hideActions: false as const,
+    };
+    return isEnrolled
+      ? { ...base, variant: "progress" as const, progress: 0, onContinue: () => handleContinue(c.course_id) }
+      : { ...base, variant: "enrollment" as const, rating: 4.5, duration: undefined, onEnroll: () => handleEnroll(c.course_id) };
+  });
 
   if (loading) {
     return (
@@ -187,48 +138,14 @@ export default function CoursePage() {
   return (
     <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
       <PageHeader
-        userName={userName}
-        greeting="Welcome back"
-        subtitle={
-          isStudent
-            ? "Ready to continue your learning journey?"
-            : isTeacher
-              ? "Manage your courses and track student progress."
-              : "Manage courses, categories, and enrollments."
-        }
-        searchPlaceholder={
-          isStudent ? "Search for course, skills..." : "Search courses..."
-        }
-        onSearch={handleSearch}
+        userName={session?.user?.name?.split(" ")[0] || "User"}
+        greeting="All courses"
+        subtitle="Browse the full catalog"
+        searchPlaceholder="Search courses..."
       />
-
-      {isStudent && (
-        <RecommendedCourseBanner onStartLearning={handleStartLearning} />
-      )}
-
-      {isStudent ? (
-        <>
-          <section className="mb-12">
-            <CoursesSectionHeader
-              title="My courses"
-              seeAllHref="/dashboard/course"
-            />
-            <CourseGrid courses={inProgressCourses} />
-          </section>
-          <section>
-            <CoursesSectionHeader
-              title="All courses"
-              seeAllHref="/dashboard/course"
-            />
-            <CourseGrid courses={availableCourses} hideActions={false} />
-          </section>
-        </>
-      ) : (
-        <section>
-          <CoursesSectionHeader title="Course catalog" />
-          <CourseGrid courses={catalogCourses} hideActions={role === "admin"} />
-        </section>
-      )}
+      <section className="mt-8">
+        <CourseGrid courses={courseCards} hideActions={false} />
+      </section>
     </div>
   );
 }

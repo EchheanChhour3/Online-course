@@ -1,7 +1,10 @@
 // lib/auth.ts
 import NextAuth from "next-auth";
+import type { JWT } from "next-auth/jwt";
+import type { Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { login } from "@/services/auth.service";
+import GoogleProvider from "next-auth/providers/google";
+import { login, googleAuth } from "@/services/auth.service";
 
 declare module "next-auth" {
   interface Session {
@@ -29,10 +32,11 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    id: string;
+    id?: string;
     role?: string[];
     status?: string;
     accessToken?: string;
+    full_name?: string;
   }
 }
 
@@ -49,38 +53,33 @@ export const config = {
           return null;
         }
 
-        try {
-          const email = credentials.email as string;
-          const password = credentials.password as string;
+        const email = credentials.email as string;
+        const password = credentials.password as string;
 
-          console.log("NextAuth authorize called with:", {
-            email,
-            password: "***",
-          });
+        const response = await login({ email, password });
 
-          // Call the real API
-          const response = await login({ email, password });
-          console.log("NextAuth login response:", response);
-
-          if (response.status === "OK" && response.payload.user) {
-            const user = response.payload.user;
-            console.log("NextAuth login successful for:", user.email);
-            return {
-              id: user.user_id.toString(),
-              email: user.email,
-              name: user.full_name,
-              role: user.role,
-              status: user.status,
-              accessToken: response.payload.accessToken,
-            };
-          }
-
-          console.log("NextAuth login failed - invalid response:", response);
-          return null;
-        } catch (error) {
-          console.error("Auth error:", error);
-          return null;
+        if (response.status === "OK" && response.payload?.user) {
+          const user = response.payload.user;
+          return {
+            id: user.user_id.toString(),
+            email: user.email,
+            name: user.full_name,
+            role: user.role,
+            status: user.status,
+            accessToken: response.payload.accessToken,
+          };
         }
+        throw new Error("Invalid credentials");
+      },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      authorization: {
+        params: {
+          scope: "openid email profile",
+          prompt: "select_account",
+        },
       },
     }),
   ],
@@ -91,7 +90,43 @@ export const config = {
     strategy: "jwt" as const,
   },
   callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
+    async jwt({
+      token,
+      user,
+      account,
+    }: {
+      token: JWT;
+      user?: {
+        id?: string;
+        role?: string[];
+        status?: string;
+        accessToken?: string;
+        full_name?: string;
+      };
+      account?: { provider?: string; id_token?: string; idToken?: string };
+    }) {
+      if (account?.provider === "google") {
+        const idToken = account.id_token ?? account.idToken;
+        if (!idToken) {
+          console.error("Google account missing id_token");
+          return token;
+        }
+        try {
+          const res = await googleAuth(idToken);
+          if (res?.payload?.accessToken && res?.payload?.user) {
+            const u = res.payload.user;
+            token.id = String(u.user_id);
+            token.role = u.role;
+            token.status = u.status;
+            token.accessToken = res.payload.accessToken;
+            token.full_name = u.full_name;
+            return token;
+          }
+        } catch (e) {
+          console.error("Google auth backend failed:", e);
+          throw e;
+        }
+      }
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -101,18 +136,18 @@ export const config = {
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
-      if (token && session.user) {
-        session.user = {
-          ...session.user,
-          id: token.id as string,
+    async session({ session, token }): Promise<Session> {
+      const s = session as Session;
+      if (token && s.user) {
+        Object.assign(s.user, {
+          id: token.id ?? "",
           role: token.role,
           status: token.status,
           full_name: token.full_name,
-        };
-        session.accessToken = token.accessToken;
+        });
+        s.accessToken = token.accessToken;
       }
-      return session;
+      return s;
     },
   },
 };

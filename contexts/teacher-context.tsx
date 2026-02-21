@@ -8,11 +8,9 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import {
-  getStoredTeachers,
-  setStoredTeachers,
-  type Teacher,
-} from "@/lib/teacher-data";
+import { useSession } from "next-auth/react";
+import { getTeachers, type TeacherItem } from "@/services/teacher.service";
+import type { Teacher } from "@/lib/teacher-data";
 
 export interface TeacherFormData {
   name: string;
@@ -23,6 +21,7 @@ export interface TeacherFormData {
 
 interface TeacherContextValue {
   teachers: Teacher[];
+  loading: boolean;
   addTeacher: (data: TeacherFormData) => Teacher;
   updateTeacher: (id: string, data: TeacherFormData) => void;
   deleteTeacher: (id: string) => void;
@@ -32,29 +31,54 @@ interface TeacherContextValue {
 
 const TeacherContext = createContext<TeacherContextValue | null>(null);
 
-function generateId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+function mapApiTeacher(item: TeacherItem): Teacher {
+  const roleList = item.role;
+  let roleStr = "Instructor";
+  if (Array.isArray(roleList) && roleList.length > 0) {
+    const r = String(roleList[0]);
+    roleStr = r === "TEACHER" ? "Teacher" : r.charAt(0) + r.slice(1).toLowerCase();
+  }
+  const userInfo = item.user_info as Record<string, unknown> | undefined;
+  const inner = (userInfo?.userInfo ?? userInfo) as Record<string, unknown> | undefined;
+  const headline = (inner?.headline as string) || roleStr;
+  return {
+    id: String(item.user_id),
+    name: item.full_name ?? "Unknown",
+    role: headline || roleStr,
+    email: item.email,
+  };
 }
 
 export function TeacherProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    setTeachers(getStoredTeachers());
-  }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (teachers.length >= 0) {
-      setStoredTeachers(teachers);
+  const refresh = useCallback(async () => {
+    const token = session?.accessToken;
+    if (!token || status !== "authenticated") {
+      setLoading(false);
+      setTeachers([]);
+      return;
     }
-  }, [teachers]);
+    setLoading(true);
+    try {
+      const list = await getTeachers(token);
+      setTeachers(Array.isArray(list) ? list.map(mapApiTeacher) : []);
+    } catch {
+      setTeachers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.accessToken, status]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    refresh();
+  }, [refresh, status]);
 
   const addTeacher = useCallback((data: TeacherFormData): Teacher => {
-    const id = generateId();
+    const id = crypto.randomUUID?.() ?? Date.now().toString();
     const teacher: Teacher = {
       id,
       name: data.name,
@@ -98,6 +122,7 @@ export function TeacherProvider({ children }: { children: ReactNode }) {
     <TeacherContext.Provider
       value={{
         teachers,
+        loading,
         addTeacher,
         updateTeacher,
         deleteTeacher,

@@ -54,7 +54,7 @@ Course content editor: modules and lessons
 
 ---
 
-## 2. Course Content Editor (`/dashboard/course/manage/[categorySlug]/[courseSlug]`)
+## 2. Course Content Editor (`/dashboard/course/manage/[courseId]`)
 
 Reached by clicking **Content** on a course.
 

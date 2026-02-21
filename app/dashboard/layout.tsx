@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { CategoryProvider } from "@/contexts/category-context";
 import { EnrollmentProvider } from "@/contexts/enrollment-context";
 import { TeacherProvider } from "@/contexts/teacher-context";
+import { RoleProvider } from "@/contexts/role-context";
 import EnrollmentSidebar from "../../components/sidebar";
 
 export default function DashboardLayout({
@@ -39,19 +40,21 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <EnrollmentSidebar onCollapseChange={setIsCollapsed} />
+    <RoleProvider>
+      <div className="min-h-screen bg-gray-50">
+        <EnrollmentSidebar onCollapseChange={setIsCollapsed} />
 
-      {/* Main Content */}
-      <div
-        className={`transition-all duration-300 ${isCollapsed ? "pl-20" : "pl-80"}`}
-      >
-        <CategoryProvider>
-          <EnrollmentProvider>
-            <TeacherProvider>{children}</TeacherProvider>
-          </EnrollmentProvider>
-        </CategoryProvider>
+        {/* Main Content */}
+        <div
+          className={`transition-all duration-300 ${isCollapsed ? "pl-20" : "pl-80"}`}
+        >
+          <CategoryProvider>
+            <EnrollmentProvider>
+              <TeacherProvider>{children}</TeacherProvider>
+            </EnrollmentProvider>
+          </CategoryProvider>
+        </div>
       </div>
-    </div>
+    </RoleProvider>
   );
 }

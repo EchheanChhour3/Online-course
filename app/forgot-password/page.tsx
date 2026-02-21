@@ -14,6 +14,8 @@ import {
   forgotPasswordSchema,
   type ForgotPasswordFormData,
 } from "@/types/auth";
+import { forgotPassword } from "@/services/auth.service";
+import { setPasswordResetEmail } from "@/lib/password-reset-storage";
 
 export default function ForgotPasswordPage() {
   const [isPending, startTransition] = useTransition();
@@ -33,14 +35,12 @@ export default function ForgotPasswordPage() {
   const onSubmit = async (data: ForgotPasswordFormData) => {
     startTransition(async () => {
       try {
-        // TODO: Integrate with actual forgot password API
-        console.log("Forgot password request:", data.email);
-        toast.success(
-          "If an account exists with this email, you will receive a reset link shortly.",
-        );
+        const res = await forgotPassword(data.email);
+        setPasswordResetEmail(data.email);
+        toast.success(res.message);
         router.push("/otp-verify");
-      } catch (error) {
-        toast.error("Something went wrong. Please try again later.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Something went wrong.");
       }
     });
   };

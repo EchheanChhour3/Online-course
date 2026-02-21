@@ -2,13 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useRole } from "@/contexts/role-context";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { role } = useRole();
 
   useEffect(() => {
-    router.replace("/dashboard/course");
-  }, [router]);
+    router.replace(role === "teacher" ? "/dashboard/course/manage" : "/dashboard/course");
+  }, [router, role]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -1,18 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { ChevronDownIcon } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import { DatePickerModern } from "@/components/ui/date-picker-modern";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,67 +12,94 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { useEnrollments } from "@/contexts/enrollment-context";
-
-const courses = [
-  { value: "html", label: "HTML" },
-  { value: "css", label: "CSS" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "react", label: "React" },
-  { value: "nodejs", label: "Node.js" },
-];
-
-const genders = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
+import { getCourses, type CourseItem } from "@/services/course.service";
+import { createEnrollment } from "@/services/enrollment.service";
+import { getUsers, type UserItem } from "@/services/user.service";
+import { toast } from "sonner";
 
 export default function CreateEnrollmentPage() {
   const router = useRouter();
-  const { addEnrollment } = useEnrollments();
+  const { data: session, status } = useSession();
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [courses, setCourses] = useState<CourseItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    course: "",
-    studentName: "",
-    gender: "",
-    email: "",
-    phoneNumber: "",
-    enrollmentDate: undefined as Date | undefined, // Changed to Date object for better compatibility
-    additionalNote: "",
+    userId: "",
+    courseId: "",
   });
 
-  const handleInputChange = (
-    field: string,
-    value: string | Date | undefined,
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+  const fetchData = useCallback(async () => {
+    const token = session?.accessToken;
+    if (!token || status !== "authenticated") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const [coursesRes, usersList] = await Promise.all([
+        getCourses(token, { page: 1, size: 500 }),
+        getUsers(token),
+      ]);
+      setCourses(coursesRes.payload?.items ?? []);
+      const allUsers = Array.isArray(usersList) ? usersList : [];
+      setUsers(allUsers.filter((u) => u.role?.includes("STUDENT")));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load data");
+      setCourses([]);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.accessToken, status]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      setLoading(false);
+      return;
+    }
+    fetchData();
+  }, [fetchData, status]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const userId = formData.userId ? Number(formData.userId) : 0;
+    const courseId = formData.courseId ? Number(formData.courseId) : 0;
+    if (!userId || !courseId) {
+      toast.error("Please select both user and course.");
+      return;
+    }
+    const token = session?.accessToken;
+    if (!token) {
+      toast.error("Please sign in to create enrollment.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createEnrollment(token, userId, courseId);
+      toast.success("Enrollment created successfully");
+      router.push("/dashboard/enrollment");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create enrollment");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.enrollmentDate) return;
-    addEnrollment({
-      studentName: formData.studentName,
-      email: formData.email,
-      phoneNumber: formData.phoneNumber,
-      gender: formData.gender,
-      course: formData.course,
-      enrollmentDate: format(formData.enrollmentDate, "yyyy-MM-dd"),
-      additionalNote: formData.additionalNote,
-    });
-    router.push("/dashboard/enrollment");
-  };
+  if (loading) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto mt-10">
+        <div className="flex items-center justify-center min-h-[200px]">
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto mt-10">
-      {" "}
-      {/* Fixed margins and width */}
-      {/* Breadcrumb */}
       <nav className="flex items-center text-sm text-gray-500 mb-6">
         <button
           onClick={() => router.push("/dashboard/enrollment")}
@@ -91,150 +110,74 @@ export default function CreateEnrollmentPage() {
         <span className="mx-2">/</span>
         <span className="text-gray-900 font-medium">Create</span>
       </nav>
-      {/* Header */}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
           Create New Enrollment
         </h1>
         <p className="text-gray-500 mt-2">
-          Fill in the details to register a new student.
+          Assign a student to a course by selecting their email.
         </p>
       </div>
-      {/* Form */}
+
       <form
         onSubmit={handleSubmit}
         className="space-y-8 bg-white p-8 rounded-xl border border-gray-200 shadow-sm"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-          {/* Select Course - Full Width */}
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="course">Select Course</Label>
+            <Label htmlFor="user">Student (by email) *</Label>
             <Select
-              value={formData.course}
-              onValueChange={(value) => handleInputChange("course", value)}
+              value={formData.userId}
+              onValueChange={(v) => setFormData((p) => ({ ...p, userId: v }))}
+              required
             >
-              <SelectTrigger className="h-11">
+              <SelectTrigger id="user" className="h-11">
+                <SelectValue placeholder="Select student by email" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.user_id} value={String(u.user_id)}>
+                    {u.email ?? "—"}
+                    {u.full_name ? ` (${u.full_name})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {users.length === 0 && (
+              <p className="text-sm text-amber-600">
+                No students found. Register students first.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="course">Course *</Label>
+            <Select
+              value={formData.courseId}
+              onValueChange={(v) => setFormData((p) => ({ ...p, courseId: v }))}
+              required
+            >
+              <SelectTrigger id="course" className="h-11">
                 <SelectValue placeholder="Select a course" />
               </SelectTrigger>
               <SelectContent>
-                {courses.map((course) => (
-                  <SelectItem key={course.value} value={course.value}>
-                    {course.label}
+                {courses.map((c) => (
+                  <SelectItem key={c.course_id} value={String(c.course_id)}>
+                    {c.course_name ?? "Untitled"}
+                    {c.instructor_name ? ` — ${c.instructor_name}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Student Full Name */}
-          <div className="space-y-2">
-            <Label htmlFor="studentName">Student Full Name</Label>
-            <Input
-              id="studentName"
-              placeholder="John Doe"
-              value={formData.studentName}
-              onChange={(e) => handleInputChange("studentName", e.target.value)}
-              className="h-11"
-            />
-          </div>
-
-          {/* Gender */}
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Select
-              value={formData.gender}
-              onValueChange={(value) => handleInputChange("gender", value)}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                {genders.map((gender) => (
-                  <SelectItem key={gender.value} value={gender.value}>
-                    {gender.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="example@email.com"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className="h-11"
-            />
-          </div>
-
-          {/* Phone Number */}
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              type="tel"
-              placeholder="+1 (555) 000-0000"
-              value={formData.phoneNumber}
-              onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-              className="h-11"
-            />
-          </div>
-
-          {/* Enrollment Date - Full Width (react-day-picker via Calendar) */}
-          <div className="space-y-2 md:col-span-2">
-            <Label>Enrollment Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  data-empty={!formData.enrollmentDate}
-                  className={cn(
-                    "w-full h-11 justify-between text-left font-normal border-gray-300",
-                    "data-[empty=true]:text-muted-foreground",
-                  )}
-                >
-                  {formData.enrollmentDate ? (
-                    format(formData.enrollmentDate, "PPP")
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                  <ChevronDownIcon />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto min-w-[320px] p-0 overflow-visible"
-                align="start"
-                sideOffset={8}
-              >
-                <DatePickerModern
-                  selected={formData.enrollmentDate}
-                  onSelect={(date) => handleInputChange("enrollmentDate", date)}
-                  defaultMonth={formData.enrollmentDate ?? new Date()}
-                />
-              </PopoverContent>
-            </Popover>
+            {courses.length === 0 && (
+              <p className="text-sm text-amber-600">
+                No courses found. Create courses first.
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Additional Note */}
-        <div className="space-y-2">
-          <Label htmlFor="additionalNote">Additional Note</Label>
-          <Textarea
-            id="additionalNote"
-            placeholder="Any specific requirements or notes..."
-            value={formData.additionalNote}
-            onChange={(e) =>
-              handleInputChange("additionalNote", e.target.value)
-            }
-            className="min-h-[120px] resize-none"
-          />
-        </div>
-
-        {/* Action Buttons */}
         <div className="flex items-center justify-end gap-4 pt-4 border-t">
           <Button
             type="button"
@@ -246,9 +189,10 @@ export default function CreateEnrollmentPage() {
           </Button>
           <Button
             type="submit"
+            disabled={submitting || users.length === 0 || courses.length === 0}
             className="bg-blue-600 hover:bg-blue-700 text-white h-11 px-8"
           >
-            Create Enrollment
+            {submitting ? "Creating..." : "Create Enrollment"}
           </Button>
         </div>
       </form>

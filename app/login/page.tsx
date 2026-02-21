@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawCallback = searchParams.get("callbackUrl") ?? "/dashboard/course";
+  const callbackUrl = rawCallback.startsWith("/") ? rawCallback : "/dashboard/course";
+  const errorParam = searchParams.get("error");
+
+  useEffect(() => {
+    if (errorParam === "OAuthCallback" || errorParam === "Callback") {
+      toast.error("Google sign-in failed. Please try again or use email/password.");
+    } else if (errorParam === "OAuthAccountNotLinked") {
+      toast.error("This email is already registered with another sign-in method.");
+    }
+  }, [errorParam]);
 
   const {
     register,
@@ -42,11 +54,10 @@ export default function LoginPage() {
         });
 
         if (result?.error) {
-          toast.error("Login failed. Please check your credentials.");
+          toast.error(result.error || "Login failed. Please check your credentials.");
         } else {
           toast.success("Login successful! Welcome back!");
-          router.push("/dashboard/course");
-          router.refresh();
+          window.location.href = callbackUrl;
         }
       } catch (error) {
         toast.error("Login failed. Please try again later.");
@@ -55,8 +66,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = () => {
-    // Implement Google sign-in if needed
-    console.log("Google sign-in clicked");
+    signIn("google", { callbackUrl });
   };
 
   return (

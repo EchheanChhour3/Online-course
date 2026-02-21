@@ -6,9 +6,9 @@ export interface LoginRequest {
 }
 
 export interface UserInfo {
-  additionalProp1: any;
-  additionalProp2: any;
-  additionalProp3: any;
+  additionalProp1: Record<string, unknown>;
+  additionalProp2: Record<string, unknown>;
+  additionalProp3: Record<string, unknown>;
 }
 
 export interface User {
@@ -17,8 +17,20 @@ export interface User {
   status: string;
   email: string;
   role: string[];
-  user_info: {
-    userInfo: UserInfo;
+  user_info?: {
+    userInfo?: Record<string, unknown>;
+    headline?: string;
+    description?: string;
+    language?: string;
+  };
+}
+
+export interface UpdateProfileRequest {
+  full_name?: string;
+  user_info?: {
+    headline?: string;
+    description?: string;
+    language?: string;
   };
 }
 
@@ -38,9 +50,9 @@ export interface RegisterRequest {
   password: string;
   roles: string;
   user_info: {
-    additionalProp1: any;
-    additionalProp2: any;
-    additionalProp3: any;
+    additionalProp1: Record<string, unknown>;
+    additionalProp2: Record<string, unknown>;
+    additionalProp3: Record<string, unknown>;
   };
 }
 
@@ -56,9 +68,9 @@ export interface RegisterResponse {
     role: string[];
     user_info: {
       userInfo: {
-        additionalProp1: any;
-        additionalProp2: any;
-        additionalProp3: any;
+        additionalProp1: Record<string, unknown>;
+        additionalProp2: Record<string, unknown>;
+        additionalProp3: Record<string, unknown>;
       };
     };
   };
@@ -71,14 +83,22 @@ export interface ProfileResponse {
   payload: User;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export interface ForgotPasswordResponse {
+  message: string;
+  status: string;
+  payload?: { message: string; otp?: string };
+}
+
+export interface VerifyOtpResponse {
+  message: string;
+  status: string;
+  payload?: { reset_token: string };
+}
+
+const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9091";
 
 export async function login(credentials: LoginRequest): Promise<LoginResponse> {
   try {
-    console.log("Login service called with:", credentials);
-    console.log("Base URL:", baseUrl);
-    console.log("Full URL:", `${baseUrl}/api/v1/auth/login`);
-
     const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: "POST",
       headers: {
@@ -86,29 +106,23 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
       },
       body: JSON.stringify(credentials),
     });
-    console.log("Login Response status:", response.status);
-    console.log("Login Response ok:", response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Login API Error Response:", errorText);
-      console.error("Login Response status:", response.status);
-
-      let errorData;
+      let msg = "Login failed";
       try {
-        errorData = JSON.parse(errorText);
+        const err = JSON.parse(errorText) as { errors?: { errorMessage?: string }; message?: string };
+        msg = err?.errors?.errorMessage ?? err?.message ?? msg;
       } catch {
-        errorData = { message: errorText };
+        if (errorText?.trim()) msg = errorText.trim();
       }
-
-      throw new Error(errorData.message || "Login failed");
+      throw new Error(msg);
     }
 
     const result = await response.json();
-    console.log("Login Success Response:", result);
     return result;
   } catch (error) {
-    console.error("Login service error:", error);
+    if (error instanceof Error) throw error;
     throw new Error("Login failed. Please try again.");
   }
 }
@@ -117,9 +131,6 @@ export async function getProfile(
   accessToken: string,
 ): Promise<ProfileResponse> {
   try {
-    console.log("Get profile service called");
-    console.log("Full URL:", `${baseUrl}/api/v1/auth/profile`);
-
     const response = await fetch(`${baseUrl}/api/v1/auth/profile`, {
       method: "GET",
       headers: {
@@ -127,13 +138,9 @@ export async function getProfile(
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    console.log("Profile Response status:", response.status);
-    console.log("Profile Response ok:", response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Profile API Error Response:", errorText);
-      console.error("Profile Response status:", response.status);
 
       let errorData;
       try {
@@ -152,6 +159,90 @@ export async function getProfile(
     console.error("Profile service error:", error);
     throw new Error("Failed to get profile. Please try again.");
   }
+}
+
+export async function updateProfile(
+  accessToken: string,
+  data: UpdateProfileRequest
+): Promise<ProfileResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/profile`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    const r = result as Record<string, unknown>;
+    const err = r?.errors as Record<string, unknown> | undefined;
+    const msg = err?.errorMessage ?? (r?.message as string) ?? "Failed to update profile";
+    throw new Error(typeof msg === "string" ? msg : "Failed to update profile");
+  }
+
+  return result;
+}
+
+function parseApiError(result: unknown): string {
+  const r = result as Record<string, unknown>;
+  const err = r?.errors as Record<string, unknown> | undefined;
+  if (err?.errorMessage && typeof err.errorMessage === "string")
+    return err.errorMessage;
+  if (r?.payload && typeof (r.payload as Record<string, unknown>)?.message === "string")
+    return (r.payload as Record<string, unknown>).message as string;
+  if (typeof r?.message === "string") return r.message;
+  return "Request failed";
+}
+
+export async function forgotPassword(email: string): Promise<{ message: string; otp?: string }> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim() }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(parseApiError(result));
+  const payload = result.payload;
+  return {
+    message: payload?.message ?? result.message ?? "Request processed",
+    otp: payload?.otp,
+  };
+}
+
+export async function verifyOtp(email: string, otp: string): Promise<string> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(parseApiError(result));
+  const resetToken = result.payload?.reset_token;
+  if (!resetToken) throw new Error("No reset token received");
+  return resetToken;
+}
+
+export async function resetPassword(resetToken: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reset_token: resetToken, new_password: newPassword }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(parseApiError(result));
+}
+
+export async function googleAuth(idToken: string): Promise<LoginResponse> {
+  const response = await fetch(`${baseUrl}/api/v1/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(parseApiError(result));
+  return result;
 }
 
 export async function register(

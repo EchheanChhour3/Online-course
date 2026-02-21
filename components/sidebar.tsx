@@ -22,46 +22,10 @@ import {
   FileText,
   Grid3x3,
   BookOpen,
-  Star,
   Users,
   FolderEdit,
 } from "lucide-react";
-
-interface FavoriteCourse {
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
-const favoriteCourses: FavoriteCourse[] = [
-  {
-    name: "HTML5",
-    description: "Hyper text markup language...",
-    icon: (
-      <div className="w-10 h-10 bg-orange-500 rounded flex items-center justify-center">
-        <span className="text-white font-bold text-sm">5</span>
-      </div>
-    ),
-  },
-  {
-    name: "CSS",
-    description: "Cascadign stylesheet....",
-    icon: (
-      <div className="w-10 h-10 bg-blue-500 rounded flex items-center justify-center">
-        <span className="text-white font-bold text-xs">CSS</span>
-      </div>
-    ),
-  },
-  {
-    name: "Javascript",
-    description: "Server script programing.....",
-    icon: (
-      <div className="w-10 h-10 bg-yellow-400 rounded flex items-center justify-center">
-        <span className="text-black font-bold text-xs">JS</span>
-      </div>
-    ),
-  },
-];
+import { useRole, type ViewRole } from "@/contexts/role-context";
 
 export default function EnrollmentSidebar({
   onCollapseChange,
@@ -115,33 +79,61 @@ export default function EnrollmentSidebar({
     router.push(href);
   };
 
-  const mainNavItems = [
+  const { role } = useRole();
+
+  const allNavItems = [
     {
       label: "Course",
       icon: <FileText className="w-5 h-5" />,
       href: "/dashboard/course",
+      roles: ["admin", "student"] as ViewRole[],
     },
     {
       label: "Manage Courses",
       icon: <FolderEdit className="w-5 h-5" />,
       href: "/dashboard/course/manage",
+      roles: ["admin", "teacher"] as ViewRole[],
     },
     {
       label: "Category",
       icon: <Grid3x3 className="w-5 h-5" />,
       href: "/dashboard/category",
+      roles: ["admin"] as ViewRole[],
     },
     {
       label: "Enrollment",
       icon: <BookOpen className="w-5 h-5" />,
       href: "/dashboard/enrollment",
+      roles: ["admin", "teacher", "student"] as ViewRole[],
     },
     {
       label: "Teachers",
       icon: <Users className="w-5 h-5" />,
       href: "/dashboard/teachers",
+      roles: ["admin"] as ViewRole[],
     },
   ];
+
+  const mainNavItems = allNavItems.filter((item) => item.roles.includes(role));
+
+  // Redirect if current path is not visible for selected role
+  useEffect(() => {
+    const visibleHrefs = allNavItems
+      .filter((i) => i.roles.includes(role))
+      .map((i) => i.href);
+    const isOnVisiblePage =
+      pathname === "/dashboard" ||
+      pathname.startsWith("/dashboard/settings") ||
+      visibleHrefs.some(
+        (href) =>
+          pathname === href ||
+          (href !== "/dashboard" && pathname.startsWith(href + "/"))
+      );
+    if (!isOnVisiblePage) {
+      const defaultHref = visibleHrefs[0] ?? "/dashboard/course";
+      router.push(defaultHref);
+    }
+  }, [role, pathname, router]);
 
   return (
     <div
@@ -151,7 +143,7 @@ export default function EnrollmentSidebar({
     >
       {/* User Profile Section */}
       <div className="px-4 py-4 border-b border-gray-200">
-        <div className="flex items-center mb-6">
+        <div className="flex items-center mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-lg">
@@ -174,6 +166,7 @@ export default function EnrollmentSidebar({
             )}
           </div>
         </div>
+
       </div>
 
       {/* Collapse Button */}
@@ -221,36 +214,6 @@ export default function EnrollmentSidebar({
           })}
         </nav>
       </div>
-
-      {/* Favorite Courses */}
-      {!isCollapsed && (
-        <div className="px-4 py-4 border-b border-gray-200 flex-1">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-            FAVORITE COURSE
-          </h3>
-          <div className="space-y-3">
-            {favoriteCourses.map((course, index) => (
-              <div
-                key={index}
-                className="flex items-center space-x-3 mx-2 py-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                {course.icon}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-gray-900 text-sm font-medium truncate">
-                      {course.name}
-                    </p>
-                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  </div>
-                  <p className="text-gray-500 text-xs truncate">
-                    {course.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Bottom Actions */}
       <div className="absolute bottom-0 left-0 right-0 px-4 py-4 border-t border-gray-200">

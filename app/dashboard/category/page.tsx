@@ -1,146 +1,251 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Code2, Globe, Palette, BookOpen, Cpu, Database } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { useRole } from "@/contexts/role-context";
 import {
-  CategoryPageHeader,
-  CategorySection,
+  CategoryList,
+  CategoryFormDialog,
+  CategoryDeleteDialog,
 } from "@/components/category";
-import { useCategories } from "@/contexts/category-context";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useState } from "react";
-import type { Category } from "@/lib/category-data";
-
-const ICON_MAP = {
-  Code2,
-  Globe,
-  Palette,
-  BookOpen,
-  Cpu,
-  Database,
-};
-
-function getIconComponent(name: string) {
-  return ICON_MAP[name as keyof typeof ICON_MAP] || Code2;
-}
-
-function getColorClass(color: string): string {
-  const COLOR_MAP: Record<string, string> = {
-    pink: "text-pink-500",
-    blue: "text-blue-500",
-    amber: "text-amber-500",
-    green: "text-green-500",
-    purple: "text-purple-500",
-    red: "text-red-500",
-  };
-  return COLOR_MAP[color] ?? "text-gray-500";
-}
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  type CategoryItem,
+} from "@/services/category.service";
 
 export default function CategoryPage() {
-  const router = useRouter();
-  const { categories, deleteCategory } = useCategories();
-  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
+  const { role } = useRole();
+  const { data: session, status } = useSession();
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingCategory, setDeletingCategory] = useState<CategoryItem | null>(
+    null,
+  );
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(
+    null,
+  );
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [categoryName, setCategoryName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const isAdmin = role === "admin";
 
-  const handleEdit = (category: Category) => {
-    router.push(`/dashboard/category/manage?edit=${category.id}`);
+  const fetchCategories = useCallback(async () => {
+    if (status === "unauthenticated") {
+      setLoading(false);
+      setError("Please sign in to view categories.");
+      return;
+    }
+    const token = session?.accessToken;
+    if (!token) {
+      if (status === "authenticated") {
+        setLoading(false);
+        setError("Session expired. Please sign in again.");
+      }
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getCategories(token, { page: 1, size: 50 });
+      setCategories(res.payload.items ?? []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load categories",
+      );
+      setCategories([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.accessToken, status]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    fetchCategories();
+  }, [fetchCategories, status]);
+
+  const resetForm = () => {
+    setCategoryName("");
+    setEditingCategory(null);
+    setSubmitError(null);
   };
 
-  const handleDeleteClick = (category: Category) => {
-    setDeletingCategory(category);
+  const openCreateDialog = () => {
+    resetForm();
+    setIsCreateOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (deletingCategory) {
-      deleteCategory(deletingCategory.id);
-      setDeletingCategory(null);
+  const handleEdit = (category: CategoryItem) => {
+    setEditingCategory(category);
+    setCategoryName(category.name);
+    setSubmitError(null);
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!categoryName.trim()) return;
+    const token = session?.accessToken;
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await createCategory(token, categoryName.trim());
+      toast.success("Category created successfully");
+      resetForm();
+      setIsCreateOpen(false);
+      await fetchCategories();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create category";
+      setSubmitError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !categoryName.trim()) return;
+    const token = session?.accessToken;
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await updateCategory(
+        token,
+        editingCategory.category_id,
+        categoryName.trim(),
+      );
+      toast.success("Category updated successfully");
+      resetForm();
+      await fetchCategories();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update category";
+      setSubmitError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteClick = (category: CategoryItem) => {
+    setDeletingCategory(category);
+    setSubmitError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingCategory) return;
+    const token = session?.accessToken;
+    if (!token) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await deleteCategory(token, deletingCategory.category_id);
+      toast.success("Category deleted successfully");
+      setDeletingCategory(null);
+      await fetchCategories();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete category";
+      setSubmitError(msg);
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+        <div className="flex items-center justify-center min-h-[200px]">
+          <p className="text-gray-500">Loading categories...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+        <div className="flex flex-col items-center justify-center min-h-[200px] gap-2">
+          <p className="text-red-500">{error}</p>
+          <Button variant="outline" onClick={fetchCategories}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <CategoryPageHeader title="Category" />
-        <Button
-          onClick={() => router.push("/dashboard/category/manage")}
-          className="bg-gray-900 hover:bg-gray-800 shrink-0"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Category
-        </Button>
-      </div>
-
-      <div className="space-y-12">
-        {categories.map((category) => {
-          const Icon = getIconComponent(category.iconName);
-          const colorClass = getColorClass(category.iconColor);
-
-          return (
-            <CategorySection
-              key={category.id}
-              name={category.name}
-              icon={<Icon className={`w-6 h-6 ${colorClass}`} />}
-              viewMoreHref={`/dashboard/category/${category.slug}`}
-              courses={category.courses.map((c) => ({
-                title: c.title,
-                instructor: c.instructor,
-                imageSrc: c.imageSrc,
-              }))}
-              onEdit={() => handleEdit(category)}
-              onDelete={() => handleDeleteClick(category)}
-            />
-          );
-        })}
-      </div>
-
-      {categories.length === 0 && (
-        <div className="text-center py-16 text-gray-500">
-          <p className="text-lg font-medium">No categories yet.</p>
-          <p className="text-sm mt-2">
-            Click &quot;Add Category&quot; to create your first category.
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Category</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {isAdmin
+              ? "Organize courses by category. Create, edit, or remove categories."
+              : "Browse categories and courses."}
           </p>
+        </div>
+        {isAdmin && (
           <Button
-            onClick={() => router.push("/dashboard/category/manage")}
-            className="mt-4 bg-gray-900 hover:bg-gray-800"
+            onClick={openCreateDialog}
+            className="bg-blue-600 hover:bg-blue-700 shrink-0"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Category
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
+      <CategoryList
+        categories={categories}
+        isAdmin={isAdmin}
+        onEdit={handleEdit}
+        onDelete={handleDeleteClick}
+        onAddClick={openCreateDialog}
+      />
+
+      <CategoryFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        mode="create"
+        name={categoryName}
+        onNameChange={setCategoryName}
+        onSubmit={handleCreate}
+        submitting={submitting}
+        error={submitError}
+        onErrorClear={() => setSubmitError(null)}
+      />
+
+      <CategoryFormDialog
+        open={!!editingCategory}
+        onOpenChange={(open) => !open && resetForm()}
+        mode="edit"
+        name={categoryName}
+        onNameChange={setCategoryName}
+        onSubmit={handleUpdate}
+        submitting={submitting}
+        error={submitError}
+        onErrorClear={() => setSubmitError(null)}
+      />
+
+      <CategoryDeleteDialog
+        category={deletingCategory}
         open={!!deletingCategory}
         onOpenChange={(open) => !open && setDeletingCategory(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Category</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{deletingCategory?.name}
-              &quot;? This will remove {deletingCategory?.courses.length ?? 0}{" "}
-              course(s). This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeletingCategory(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={handleDeleteConfirm}
+        submitting={submitting}
+        error={submitError}
+        onErrorClear={() => setSubmitError(null)}
+      />
     </div>
   );
 }

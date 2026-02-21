@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,11 +14,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getProfile, updateProfile } from "@/services/auth.service";
+import { toast } from "sonner";
+
+function parseName(fullName?: string): { first: string; last: string } {
+  if (!fullName?.trim()) return { first: "", last: "" };
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  const first = parts[0];
+  const last = parts.slice(1).join(" ");
+  return { first, last };
+}
 
 export function ProfileForm() {
-  const router = useRouter();
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [fileName, setFileName] = useState("");
+  const { data: session, status, update: updateSession } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -27,41 +38,93 @@ export function ProfileForm() {
     language: "",
   });
 
+  const fetchProfile = useCallback(async () => {
+    const token = session?.accessToken;
+    if (!token || status !== "authenticated") {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await getProfile(token);
+      const payload = res.payload;
+      const { first, last } = parseName(payload?.full_name);
+      const userInfo = payload?.user_info as Record<string, unknown> | undefined;
+      const inner = (userInfo?.userInfo ?? userInfo) as Record<string, unknown> | undefined;
+      setFormData({
+        firstName: first,
+        lastName: last,
+        headline: (inner?.headline as string) ?? "",
+        description: (inner?.description as string) ?? "",
+        language: (inner?.language as string) ?? "",
+      });
+    } catch {
+      toast.error("Failed to load profile");
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.accessToken, status]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    fetchProfile();
+  }, [fetchProfile, status]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = session?.accessToken;
+    if (!token) {
+      toast.error("Please sign in to update profile.");
+      return;
+    }
+    const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(" ").trim();
+    if (!fullName || fullName.length < 5) {
+      toast.error("Full name must be at least 5 characters.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await updateProfile(token, {
+        full_name: fullName,
+        user_info: {
+          headline: formData.headline.trim() || undefined,
+          description: formData.description.trim() || undefined,
+          language: formData.language || undefined,
+        },
+      });
+      toast.success("Profile updated successfully");
+      const payload = res?.payload ?? res;
+      if (payload?.full_name) {
+        await updateSession?.({ name: payload.full_name });
+      }
+      fetchProfile();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleUploadImage = () => {
-    document.getElementById("profile-image-input")?.click();
-  };
-
-  const handleSaveImage = () => {
-    // TODO: Implement save image to server
-    console.log("Save image");
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Implement save profile
-    console.log("Save profile", formData);
-  };
+  if (loading) {
+    return (
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-center py-16">
+          <p className="text-gray-500">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 min-w-0">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
         <button
-          onClick={() => router.back()}
+          onClick={() => history.back()}
           className="p-1 rounded hover:bg-gray-100"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -72,7 +135,6 @@ export function ProfileForm() {
       </nav>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Personal Information */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-6">
             Personal Information
@@ -82,7 +144,7 @@ export function ProfileForm() {
               <Label htmlFor="firstName">First Name</Label>
               <Input
                 id="firstName"
-                placeholder="Label"
+                placeholder="First name"
                 value={formData.firstName}
                 onChange={(e) => handleInputChange("firstName", e.target.value)}
                 className="h-11"
@@ -92,7 +154,7 @@ export function ProfileForm() {
               <Label htmlFor="lastName">Last Name</Label>
               <Input
                 id="lastName"
-                placeholder="Label"
+                placeholder="Last name"
                 value={formData.lastName}
                 onChange={(e) => handleInputChange("lastName", e.target.value)}
                 className="h-11"
@@ -102,17 +164,17 @@ export function ProfileForm() {
               <Label htmlFor="headline">Headline</Label>
               <Input
                 id="headline"
-                placeholder="Label"
+                placeholder="e.g. UI/UX Designer"
                 value={formData.headline}
                 onChange={(e) => handleInputChange("headline", e.target.value)}
                 className="h-11"
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Description (Instructor Bio)</Label>
               <Textarea
                 id="description"
-                placeholder="Label"
+                placeholder="Tell students about yourself. This appears on your course pages."
                 value={formData.description}
                 onChange={(e) =>
                   handleInputChange("description", e.target.value)
@@ -123,11 +185,11 @@ export function ProfileForm() {
             <div className="space-y-2">
               <Label htmlFor="language">Language</Label>
               <Select
-                value={formData.language}
+                value={formData.language || "en"}
                 onValueChange={(value) => handleInputChange("language", value)}
               >
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Label" />
+                  <SelectValue placeholder="Select language" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="en">English</SelectItem>
@@ -138,58 +200,11 @@ export function ProfileForm() {
               </Select>
             </div>
           </div>
-        </div>
-
-        {/* Image Section */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Image Preview
-          </h3>
-          <div className="aspect-[3/2] max-w-[300px] bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden mb-6">
-            {imagePreview ? (
-              <img
-                src={imagePreview}
-                alt="Profile preview"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <ImageIcon className="w-16 h-16 text-gray-300" />
-            )}
-          </div>
-
-          <h4 className="text-base font-medium text-gray-900 mb-3">
-            Add/Change Image
-          </h4>
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              id="profile-image-input"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Input
-              placeholder="Label"
-              readOnly
-              value={fileName}
-              className="h-11 flex-1 min-w-[200px]"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleUploadImage}
-              className="h-11"
-            >
-              Upload Image
+          <div className="mt-6 pt-6 border-t">
+            <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+              {saving ? "Saving..." : "Save Profile"}
             </Button>
           </div>
-          <Button
-            type="button"
-            onClick={handleSaveImage}
-            className="mt-4 bg-gray-900 hover:bg-gray-800 text-white h-11 px-6"
-          >
-            Save Image
-          </Button>
         </div>
       </form>
     </div>

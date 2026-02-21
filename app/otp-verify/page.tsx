@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useTransition, useState } from "react";
+import { useRef, useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -8,6 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BookOpen, Users } from "lucide-react";
+import { verifyOtp } from "@/services/auth.service";
+import {
+  getPasswordResetEmail,
+  setPasswordResetToken,
+} from "@/lib/password-reset-storage";
 
 const OTP_LENGTH = 6;
 
@@ -15,8 +20,27 @@ export default function OtpVerifyPage() {
   const [isPending, startTransition] = useTransition();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error, setError] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    const stored = getPasswordResetEmail();
+    if (!stored) {
+      toast.error("Session expired. Please start from forgot password.");
+      router.replace("/forgot-password");
+    } else {
+      setEmail(stored);
+    }
+  }, [router]);
+
+  if (!email) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <p className="text-gray-500">Redirecting...</p>
+      </div>
+    );
+  }
 
   const handleChange = (index: number, value: string) => {
     if (value.length > 1) {
@@ -59,15 +83,19 @@ export default function OtpVerifyPage() {
       setError("Please enter all 6 digits");
       return;
     }
+    if (!email) {
+      setError("Session expired. Please start from forgot password.");
+      return;
+    }
 
     startTransition(async () => {
       try {
-        // TODO: Integrate with actual OTP verification API
-        console.log("OTP verify:", otpValue);
+        const resetToken = await verifyOtp(email, otpValue);
+        setPasswordResetToken(resetToken);
         toast.success("OTP verified successfully!");
         router.push("/change-password");
       } catch (err) {
-        toast.error("Invalid OTP. Please try again.");
+        setError(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
       }
     });
   };

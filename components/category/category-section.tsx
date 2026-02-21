@@ -9,7 +9,7 @@ import { CategoryCourseCard, type CategoryCourseCardProps } from "./category-cou
 export interface CategorySectionProps {
   name: string;
   icon: ReactNode;
-  viewMoreHref: string;
+  viewMoreHref?: string;
   courses: CategoryCourseCardProps[];
   onEdit?: () => void;
   onDelete?: () => void;
@@ -60,13 +60,15 @@ export function CategorySection({
             )}
           </div>
         </div>
-        <Link
-          href={viewMoreHref}
-          className="text-blue-600 hover:text-blue-500 text-sm font-medium flex items-center gap-1"
-        >
-          View More
-          <span>&gt;</span>
-        </Link>
+        {viewMoreHref && (
+          <Link
+            href={viewMoreHref}
+            className="text-blue-600 hover:text-blue-500 text-sm font-medium flex items-center gap-1"
+          >
+            View More
+            <span>&gt;</span>
+          </Link>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

@@ -9,6 +9,7 @@ export interface Lesson {
   duration: string;
   completed: boolean;
   active?: boolean;
+  videoUrl?: string;
 }
 
 export interface CourseModule {
@@ -19,6 +20,8 @@ export interface CourseModule {
 
 interface CourseCompletionSidebarProps {
   modules?: CourseModule[];
+  activeLessonId?: string;
+  onLessonClick?: (lesson: Lesson) => void;
 }
 
 const defaultModules: CourseModule[] = [
@@ -117,6 +120,8 @@ const defaultModules: CourseModule[] = [
 
 export function CourseCompletionSidebar({
   modules = defaultModules,
+  activeLessonId,
+  onLessonClick,
 }: CourseCompletionSidebarProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     new Set([modules[0]?.id].filter(Boolean))
@@ -161,13 +166,20 @@ export function CourseCompletionSidebar({
               </button>
               {isExpanded && (
                 <div className="border-t border-gray-200 bg-gray-50/50">
-                  {module.lessons.map((lesson) => (
+                  {module.lessons.map((lesson) => {
+                    const isActive = activeLessonId === lesson.id;
+                    const hasVideo = Boolean(lesson.videoUrl?.trim());
+                    return (
                     <button
                       key={lesson.id}
+                      type="button"
+                      onClick={() => hasVideo && onLessonClick?.(lesson)}
                       className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left ${
-                        lesson.active
+                        isActive || lesson.active
                           ? "bg-blue-600 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
+                          : hasVideo
+                            ? "text-gray-700 hover:bg-gray-100 cursor-pointer"
+                            : "text-gray-500 cursor-default"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -175,7 +187,7 @@ export function CourseCompletionSidebar({
                           className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
                             lesson.completed
                               ? "bg-blue-600 border-blue-600 text-white"
-                              : lesson.active
+                              : isActive || lesson.active
                                 ? "border-white text-white"
                                 : "border-gray-400"
                           }`}
@@ -188,13 +200,13 @@ export function CourseCompletionSidebar({
                       </div>
                       <span
                         className={`shrink-0 ml-2 ${
-                          lesson.active ? "text-blue-100" : "text-gray-500"
+                          isActive || lesson.active ? "text-blue-100" : "text-gray-500"
                         }`}
                       >
                         {lesson.duration}
                       </span>
                     </button>
-                  ))}
+                  );})}
                 </div>
               )}
             </div>

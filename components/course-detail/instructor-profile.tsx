@@ -52,7 +52,9 @@ export function InstructorProfile({
               );
             })}
           </div>
-          <p className="text-gray-600 text-sm leading-relaxed">{bio}</p>
+          {bio ? (
+            <p className="text-gray-600 text-sm leading-relaxed">{bio}</p>
+          ) : null}
         </div>
       </div>
     </section>

@@ -7,12 +7,15 @@ export interface CourseCardBaseProps {
   imageSrc?: string;
   title: string;
   author: string;
+  courseId?: number;
+  onViewCourse?: (courseId: number) => void;
 }
 
 export interface CourseCardProgressProps extends CourseCardBaseProps {
   variant: "progress";
   progress: number;
   onContinue?: () => void;
+  hideActions?: boolean;
 }
 
 export interface CourseCardEnrollmentProps extends CourseCardBaseProps {
@@ -20,6 +23,7 @@ export interface CourseCardEnrollmentProps extends CourseCardBaseProps {
   rating?: number;
   duration?: string;
   onEnroll?: () => void;
+  hideActions?: boolean;
 }
 
 export type CourseCardProps = CourseCardProgressProps | CourseCardEnrollmentProps;
@@ -31,15 +35,28 @@ const placeholderImages = [
 ];
 
 export function CourseCard(props: CourseCardProps) {
-  const { title, author, imageSrc, variant } = props;
+  const { title, author, imageSrc, variant, courseId, onViewCourse } = props;
+  const hideActions = "hideActions" in props && props.hideActions;
+  const isClickable = courseId != null && onViewCourse != null;
   const imgSrc =
     imageSrc ||
     placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
 
   return (
-    <article className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-gray-600 transition-colors">
-      {/* Image */}
-      <div className="relative h-40 overflow-hidden">
+    <article className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-gray-300 transition-colors shadow-sm">
+      {/* Image - clickable to view course */}
+      <div
+        className={`relative h-40 overflow-hidden ${isClickable ? "cursor-pointer" : ""}`}
+        onClick={() => isClickable && onViewCourse!(courseId!)}
+        onKeyDown={(e) => {
+          if (isClickable && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            onViewCourse!(courseId!);
+          }
+        }}
+        role={isClickable ? "button" : undefined}
+        tabIndex={isClickable ? 0 : undefined}
+      >
         <img
           src={imgSrc}
           alt={title}
@@ -57,10 +74,21 @@ export function CourseCard(props: CourseCardProps) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-bold text-white text-lg mb-1 line-clamp-1">
+        <h3
+          className={`font-bold text-gray-900 text-lg mb-1 line-clamp-1 ${isClickable ? "cursor-pointer hover:text-blue-600 hover:underline" : ""}`}
+          onClick={() => isClickable && onViewCourse!(courseId!)}
+          onKeyDown={(e) => {
+            if (isClickable && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              onViewCourse!(courseId!);
+            }
+          }}
+          role={isClickable ? "button" : undefined}
+          tabIndex={isClickable ? 0 : undefined}
+        >
           {title}
         </h3>
-        <p className="text-gray-400 text-sm mb-4">By {author}</p>
+        <p className="text-gray-500 text-sm mb-4">By {author}</p>
 
         {variant === "progress" && (
           <>
@@ -68,33 +96,37 @@ export function CourseCard(props: CourseCardProps) {
               <span>Progress</span>
               <span>{props.progress}%</span>
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
               <div
                 className="bg-blue-500 h-2 rounded-full transition-all"
                 style={{ width: `${props.progress}%` }}
               />
             </div>
-            <Button
-              onClick={props.onContinue}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-2"
-            >
-              <Play className="w-4 h-4 mr-2 fill-current" />
-              Continue
-            </Button>
+            {!hideActions && (
+              <Button
+                onClick={props.onContinue}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-2"
+              >
+                <Play className="w-4 h-4 mr-2 fill-current" />
+                Continue
+              </Button>
+            )}
           </>
         )}
 
         {variant === "enrollment" && (
           <>
             {props.duration && (
-              <p className="text-gray-400 text-sm mb-4">{props.duration}</p>
+              <p className="text-gray-500 text-sm mb-4">{props.duration}</p>
             )}
-            <Button
-              onClick={props.onEnroll}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-2"
-            >
-              Enroll
-            </Button>
+            {!hideActions && (
+              <Button
+                onClick={props.onEnroll}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg py-2"
+              >
+                Enroll
+              </Button>
+            )}
           </>
         )}
       </div>

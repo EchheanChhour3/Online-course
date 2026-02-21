@@ -15,6 +15,14 @@ const DEFAULT_TEACHERS: Teacher[] = [
   { id: "6", name: "John Smith", role: "TypeScript Specialist", email: "john@example.com" },
   { id: "7", name: "Lisa Wong", role: "GraphQL Developer", email: "lisa@example.com" },
   { id: "8", name: "David Lee", role: "Machine Learning", email: "david@example.com" },
+  { id: "9", name: "James Wilson", role: "Full Stack Developer", email: "james@example.com" },
+  { id: "10", name: "Maria Garcia", role: "Python Instructor", email: "maria@example.com" },
+  { id: "11", name: "Chris Brown", role: "AWS Solutions Architect", email: "chris@example.com" },
+  { id: "12", name: "Anna Kowalski", role: "React Specialist", email: "anna@example.com" },
+  { id: "13", name: "Kevin Nguyen", role: "Mobile Developer", email: "kevin@example.com" },
+  { id: "14", name: "Rachel Green", role: "Database Administrator", email: "rachel@example.com" },
+  { id: "15", name: "Tom Anderson", role: "Security Analyst", email: "tom@example.com" },
+  { id: "16", name: "Nina Patel", role: "Product Designer", email: "nina@example.com" },
 ];
 
 const STORAGE_KEY = "online-course-teachers";

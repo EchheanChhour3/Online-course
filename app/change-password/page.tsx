@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -14,11 +14,17 @@ import {
   changePasswordSchema,
   type ChangePasswordFormData,
 } from "@/types/auth";
+import { resetPassword } from "@/services/auth.service";
+import {
+  getPasswordResetToken,
+  clearPasswordResetData,
+} from "@/lib/password-reset-storage";
 
 export default function ChangePasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [ready, setReady] = useState(false);
   const router = useRouter();
 
   const {
@@ -33,18 +39,43 @@ export default function ChangePasswordPage() {
     },
   });
 
+  useEffect(() => {
+    const token = getPasswordResetToken();
+    if (!token) {
+      toast.error("Session expired. Please start from forgot password.");
+      router.replace("/forgot-password");
+    } else {
+      setReady(true);
+    }
+  }, [router]);
+
   const onSubmit = async (data: ChangePasswordFormData) => {
+    const token = getPasswordResetToken();
+    if (!token) {
+      toast.error("Session expired. Please start from forgot password.");
+      router.replace("/forgot-password");
+      return;
+    }
+
     startTransition(async () => {
       try {
-        // TODO: Integrate with actual change password API
-        console.log("Change password:", data);
+        await resetPassword(token, data.password);
+        clearPasswordResetData();
         toast.success("Password changed successfully!");
         router.push("/login");
-      } catch (error) {
-        toast.error("Failed to change password. Please try again.");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to change password.");
       }
     });
   };
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
