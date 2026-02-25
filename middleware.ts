@@ -9,7 +9,7 @@ export default async function middleware(req: NextRequest) {
   const isAuthenticated = !!token;
 
   // Redirect unauthenticated users from protected routes
-  if (pathname.startsWith("/dashboard") && !isAuthenticated) {
+  if (pathname.startsWith("/profile") && !isAuthenticated) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
@@ -17,7 +17,7 @@ export default async function middleware(req: NextRequest) {
 
   // Redirect authenticated users from auth pages
   if ((pathname === "/login" || pathname === "/register") && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard/course", req.url));
+    return NextResponse.redirect(new URL("/profile", req.url));
   }
 
   return NextResponse.next();

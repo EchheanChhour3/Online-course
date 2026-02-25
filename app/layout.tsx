@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EduFlow - Online Course Platform",
-  description: "Master new skills with expert-led courses. Learn programming, design, data science, and more.",
+  title: "Auth - Authentication",
+  description: "User authentication with login, registration, password reset, and Google sign-in.",
 };
 
 export default function RootLayout({

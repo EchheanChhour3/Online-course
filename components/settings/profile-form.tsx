@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -98,7 +99,7 @@ export function ProfileForm() {
         },
       });
       toast.success("Profile updated successfully");
-      const payload = res?.payload ?? res;
+      const payload = (res?.payload ?? res) as { full_name?: string } | undefined;
       if (payload?.full_name) {
         await updateSession?.({ name: payload.full_name });
       }
@@ -123,15 +124,10 @@ export function ProfileForm() {
   return (
     <div className="flex-1 min-w-0">
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <button
-          onClick={() => history.back()}
-          className="p-1 rounded hover:bg-gray-100"
-        >
+        <Link href="/" className="p-1 rounded hover:bg-gray-100 flex items-center gap-1">
           <ChevronLeft className="w-4 h-4" />
-        </button>
-        <span>Profile</span>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-gray-900 font-medium">Profile</span>
+          Back to home
+        </Link>
       </nav>
 
       <form onSubmit={handleSubmit} className="space-y-8">
