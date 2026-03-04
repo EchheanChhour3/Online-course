@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import {
   Plus,
   Pencil,
@@ -321,7 +322,12 @@ export default function CourseManagePage() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="bg-white rounded-lg border border-gray-200 p-6 m-8"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -377,9 +383,12 @@ export default function CourseManagePage() {
       </div>
 
       <div className="space-y-4">
-        {filteredCourses.map((cwc) => (
-          <div
+        {filteredCourses.map((cwc, index) => (
+          <motion.div
             key={`${cwc.categoryId}-${getCourseId(cwc.course)}-${cwc.courseIndex}`}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
             className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
           >
             <div className="flex items-center gap-4">
@@ -427,7 +436,7 @@ export default function CourseManagePage() {
                 </>
               )}
             </div>
-          </div>
+          </motion.div>
         ))}
 
         {filteredCourses.length === 0 && (
@@ -693,6 +702,6 @@ export default function CourseManagePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

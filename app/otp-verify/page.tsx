@@ -3,6 +3,7 @@
 import { useRef, useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,9 +103,19 @@ export default function OtpVerifyPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="w-full max-w-6xl h-[80vh] rounded-2xl shadow-2xl overflow-hidden flex"
+      >
         {/* Left Column - Blue Background */}
-        <div className="hidden lg:flex lg:w-1/2 bg-[#19a7e8] flex-col justify-center px-12">
+        <motion.div
+          initial={{ opacity: 0, x: -40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+          className="hidden lg:flex lg:w-1/2 bg-[#19a7e8] flex-col justify-center px-12"
+        >
           <div className="text-white space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold leading-tight">
@@ -140,10 +151,15 @@ export default function OtpVerifyPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Column - White Background */}
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+          className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8"
+        >
           <div className="max-w-md w-full space-y-8">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-gray-900 text-left">
@@ -204,8 +220,8 @@ export default function OtpVerifyPage() {
               </Link>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

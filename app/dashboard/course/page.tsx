@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   PageHeader,
   RecommendedCourseBanner,
@@ -185,7 +186,12 @@ export default function CoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="min-h-screen bg-white p-8 sm:p-10 lg:p-12"
+    >
       <PageHeader
         userName={userName}
         greeting="Welcome back"
@@ -229,6 +235,6 @@ export default function CoursePage() {
           <CourseGrid courses={catalogCourses} hideActions={role === "admin"} />
         </section>
       )}
-    </div>
+    </motion.div>
   );
 }

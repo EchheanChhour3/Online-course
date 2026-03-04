@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import {
   ChevronDown,
   ChevronUp,
@@ -289,7 +290,12 @@ export default function CourseContentManagePage() {
   const canEditModules = role === "admin" || isCourseInstructor;
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="bg-white rounded-lg border border-gray-200 p-6 m-8"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{courseName}</h1>
@@ -324,8 +330,11 @@ export default function CourseContentManagePage() {
           const lessons = module.lessons ?? [];
           const isExpanded = expandedModules.has(idx);
           return (
-            <div
+            <motion.div
               key={module.module_id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.06 }}
               className="border border-gray-200 rounded-xl overflow-hidden"
             >
               <div className="flex items-center justify-between bg-gray-50 px-4 py-3">
@@ -448,7 +457,7 @@ export default function CourseContentManagePage() {
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
           );
         })}
 
@@ -756,6 +765,6 @@ export default function CourseContentManagePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

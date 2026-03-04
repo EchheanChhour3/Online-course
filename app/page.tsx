@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import {
   BookOpen,
   GraduationCap,
@@ -30,7 +32,12 @@ export default function HomePage() {
       </div>
 
       {/* Navigation */}
-      <header className="relative border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="relative border-b border-slate-200/80 bg-white/80 backdrop-blur-md"
+      >
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#19a7e8]">
@@ -76,31 +83,51 @@ export default function HomePage() {
             )}
           </div>
         </nav>
-      </header>
+      </motion.header>
 
       <main>
         {/* Hero Section */}
         <section className="relative px-4 pt-20 pb-28 sm:px-6 sm:pt-28 sm:pb-36 lg:px-8">
           <div className="mx-auto max-w-7xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm"
+            >
               <Sparkles className="h-4 w-4 text-amber-500" />
               <span>Learn from industry experts</span>
-            </div>
+            </motion.div>
 
-            <h1 className="mt-8 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl">
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mt-8 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl md:text-6xl lg:text-7xl"
+            >
               <span className="block">Your future starts</span>
               <span className="mt-2 block bg-gradient-to-r from-[#19a7e8] to-[#0ea5e9] bg-clip-text text-transparent">
                 here
               </span>
-            </h1>
+            </motion.h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl">
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl"
+            >
               Master new skills with expert-led courses. Join thousands of
               learners building careers in programming, design, data science,
               and more.
-            </p>
+            </motion.p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+            >
               {isLoggedIn ? (
                 <Button
                   asChild
@@ -134,9 +161,14 @@ export default function HomePage() {
                   </Button>
                 </>
               )}
-            </div>
+            </motion.div>
 
-            <div className="mt-16 flex flex-wrap items-center justify-center gap-8 text-slate-500">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.55 }}
+              className="mt-16 flex flex-wrap items-center justify-center gap-8 text-slate-500"
+            >
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-emerald-500" />
                 <span>Free to start</span>
@@ -149,47 +181,47 @@ export default function HomePage() {
                 <PlayCircle className="h-5 w-5 text-blue-500" />
                 <span>Learn at your pace</span>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* Stats Bar */}
         <section className="border-y border-slate-200 bg-slate-50/80 py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-              <div className="text-center">
+            <StaggerContainer className="grid grid-cols-2 gap-8 md:grid-cols-4">
+              <StaggerItem className="text-center">
                 <div className="text-3xl font-bold text-[#19a7e8] sm:text-4xl">
                   50K+
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-600">
                   Active Learners
                 </div>
-              </div>
-              <div className="text-center">
+              </StaggerItem>
+              <StaggerItem className="text-center">
                 <div className="text-3xl font-bold text-slate-900 sm:text-4xl">
                   500+
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-600">
                   Expert Courses
                 </div>
-              </div>
-              <div className="text-center">
+              </StaggerItem>
+              <StaggerItem className="text-center">
                 <div className="text-3xl font-bold text-slate-900 sm:text-4xl">
                   98%
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-600">
                   Completion Rate
                 </div>
-              </div>
-              <div className="text-center">
+              </StaggerItem>
+              <StaggerItem className="text-center">
                 <div className="text-3xl font-bold text-slate-900 sm:text-4xl">
                   24/7
                 </div>
                 <div className="mt-1 text-sm font-medium text-slate-600">
                   Access Anytime
                 </div>
-              </div>
-            </div>
+              </StaggerItem>
+            </StaggerContainer>
           </div>
         </section>
 
@@ -209,7 +241,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <StaggerContainer className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
                   icon: BookOpen,
@@ -242,7 +274,7 @@ export default function HomePage() {
               ].map((feature) => {
                 const Icon = feature.icon;
                 return (
-                  <div
+                  <StaggerItem
                     key={feature.title}
                     className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
                   >
@@ -257,17 +289,23 @@ export default function HomePage() {
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
                       {feature.description}
                     </p>
-                  </div>
+                  </StaggerItem>
                 );
               })}
-            </div>
+            </StaggerContainer>
           </div>
         </section>
 
         {/* CTA Section */}
         <section className="py-24 sm:py-32">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#19a7e8] to-[#0ea5e9] px-8 py-16 sm:px-12 sm:py-20">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#19a7e8] to-[#0ea5e9] px-8 py-16 sm:px-12 sm:py-20"
+            >
               <div className="mx-auto max-w-2xl text-center">
                 <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
                   Ready to transform your career?
@@ -305,7 +343,7 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
       </main>

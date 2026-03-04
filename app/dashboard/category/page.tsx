@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -184,7 +185,12 @@ export default function CategoryPage() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="bg-white rounded-lg border border-gray-200 p-6 m-8"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Category</h1>
@@ -246,6 +252,6 @@ export default function CategoryPage() {
         error={submitError}
         onErrorClear={() => setSubmitError(null)}
       />
-    </div>
+    </motion.div>
   );
 }

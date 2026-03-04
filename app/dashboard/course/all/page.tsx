@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   PageHeader,
   CourseGrid,
@@ -136,7 +137,12 @@ export default function AllCoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="min-h-screen bg-white p-8 sm:p-10 lg:p-12"
+    >
       <PageHeader
         userName={session?.user?.name?.split(" ")[0] || "User"}
         greeting="All courses"
@@ -146,6 +152,6 @@ export default function AllCoursesPage() {
       <section className="mt-8">
         <CourseGrid courses={courseCards} hideActions={false} />
       </section>
-    </div>
+    </motion.div>
   );
 }

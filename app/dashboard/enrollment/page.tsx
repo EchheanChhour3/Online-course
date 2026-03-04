@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import EnrollmentsHeader from "./enrollments-header";
 import EnrollmentsTable from "./enrollments-table";
 import { useRole } from "@/contexts/role-context";
@@ -66,7 +67,12 @@ export default function EnrollmentPage() {
   }, [fetchData, status]);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="bg-white rounded-lg border border-gray-200 p-6 m-8"
+    >
       <EnrollmentsHeader
         role={role}
         searchTerm={searchTerm}
@@ -91,6 +97,6 @@ export default function EnrollmentPage() {
         users={users}
         courses={courses}
       />
-    </div>
+    </motion.div>
   );
 }

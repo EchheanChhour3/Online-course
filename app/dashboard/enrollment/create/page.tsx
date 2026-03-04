@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -99,7 +100,12 @@ export default function CreateEnrollmentPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto mt-10">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="p-8 max-w-4xl mx-auto mt-10"
+    >
       <nav className="flex items-center text-sm text-gray-500 mb-6">
         <button
           onClick={() => router.push("/dashboard/enrollment")}
@@ -196,6 +202,6 @@ export default function CreateEnrollmentPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </motion.div>
   );
 }

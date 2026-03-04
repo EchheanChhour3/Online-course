@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -127,7 +128,12 @@ export default function TeachersPage() {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 m-8">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="bg-white rounded-lg border border-gray-200 p-6 m-8"
+    >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <h1 className="text-2xl font-bold text-gray-900">
           Teachers ({filteredTeachers.length})
@@ -162,9 +168,12 @@ export default function TeachersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredTeachers.map((teacher) => (
-            <div
+          {filteredTeachers.map((teacher, index) => (
+            <motion.div
               key={teacher.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
               className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
             >
               <div className="flex items-center gap-4">
@@ -202,7 +211,7 @@ export default function TeachersPage() {
                   Delete
                 </Button>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {filteredTeachers.length === 0 && (
@@ -356,6 +365,6 @@ export default function TeachersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }
