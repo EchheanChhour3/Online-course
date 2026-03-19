@@ -98,9 +98,9 @@ export function ProfileForm() {
         },
       });
       toast.success("Profile updated successfully");
-      const payload = res?.payload ?? res;
-      if (payload?.full_name) {
-        await updateSession?.({ name: payload.full_name });
+      const user = res?.payload;
+      if (user?.full_name) {
+        await updateSession?.({ name: user.full_name });
       }
       fetchProfile();
     } catch (err) {
