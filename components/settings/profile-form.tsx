@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getProfile, updateProfile } from "@/services/auth.service";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 function parseName(fullName?: string): { first: string; last: string } {
   if (!fullName?.trim()) return { first: "", last: "" };

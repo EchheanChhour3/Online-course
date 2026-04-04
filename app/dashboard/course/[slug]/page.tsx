@@ -1,8 +1,24 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  BookOpen,
+  GraduationCap,
+  Loader2,
+  Lock,
+  SearchX,
+  ShieldAlert,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   CourseDetailHeader,
   CourseVideoPlayer,
@@ -15,6 +31,45 @@ import {
   type Lesson,
 } from "@/components/course-detail";
 import { getCourseById, type CourseItem } from "@/services/course.service";
+import { cn } from "@/lib/utils";
+
+type ErrorKind = "access" | "auth" | "notfound" | "generic";
+
+function classifyError(message: string): ErrorKind {
+  const m = message.toLowerCase();
+  if (m.includes("sign in") || m.includes("sign-in")) return "auth";
+  if (
+    m.includes("access") ||
+    m.includes("unauthorized") ||
+    m.includes("forbidden") ||
+    m.includes("permission")
+  ) {
+    return "access";
+  }
+  if (m.includes("not found") || m.includes("invalid course")) return "notfound";
+  return "generic";
+}
+
+function CourseGateShell({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "min-h-[calc(100vh-0px)] bg-gradient-to-br from-slate-50 via-white to-teal-50/50",
+        className,
+      )}
+    >
+      <div className="mx-auto flex min-h-[min(560px,85vh)] max-w-lg flex-col items-center justify-center px-6 py-16 sm:px-8">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function getFirstLessonVideoUrl(course: CourseItem | null): string | undefined {
   if (!course?.modules?.length) return undefined;
@@ -126,41 +181,143 @@ export default function CourseDetailPage() {
 
   if (!courseId) {
     return (
-      <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
-        <p className="text-red-500">Invalid course.</p>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/course")}
-          className="mt-4 text-blue-600 hover:underline"
+      <CourseGateShell>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="w-full rounded-3xl border border-slate-200/90 bg-white p-10 text-center shadow-xl shadow-slate-200/40"
         >
-          Back to courses
-        </button>
-      </div>
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 ring-8 ring-amber-50/80">
+            <SearchX className="h-8 w-8" strokeWidth={1.75} />
+          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            That link isn’t valid
+          </h1>
+          <p className="mt-3 text-sm leading-relaxed text-slate-600">
+            The course address is missing or malformed. Check the URL or open a
+            course from your dashboard.
+          </p>
+          <Button
+            className="mt-8 h-11 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 px-8 font-semibold shadow-lg shadow-teal-600/20 hover:from-teal-500 hover:to-emerald-500"
+            onClick={() => router.push("/dashboard/course")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to my courses
+          </Button>
+        </motion.div>
+      </CourseGateShell>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
-        <div className="flex items-center justify-center min-h-[200px]">
-          <p className="text-gray-500">Loading course...</p>
+      <CourseGateShell>
+        <div className="flex flex-col items-center gap-5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/30">
+            <Loader2 className="h-8 w-8 animate-spin" strokeWidth={2} />
+          </div>
+          <p className="text-sm font-medium text-slate-600">Loading course…</p>
         </div>
-      </div>
+      </CourseGateShell>
     );
   }
 
   if (error || !course) {
+    const message = error ?? "Course not found.";
+    const kind = classifyError(message);
+
+    const copy: Record<
+      ErrorKind,
+      { title: string; body: string; icon: typeof Lock; accent: string }
+    > = {
+      access: {
+        title: "This course isn’t available to you",
+        body: "You’re not enrolled in this course and it isn’t assigned through your groups. Ask your administrator if you think you should have access.",
+        icon: Lock,
+        accent: "from-rose-50 to-orange-50 text-rose-600 ring-rose-100",
+      },
+      auth: {
+        title: "Sign in to continue",
+        body: "Your session may have expired. Sign in again to view this course.",
+        icon: ShieldAlert,
+        accent: "from-slate-100 to-slate-50 text-slate-700 ring-slate-200/80",
+      },
+      notfound: {
+        title: "We couldn’t find this course",
+        body: "It may have been removed or the link is outdated. Return to your course list and try again.",
+        icon: BookOpen,
+        accent: "from-slate-100 to-slate-50 text-slate-600 ring-slate-200/80",
+      },
+      generic: {
+        title: "Something went wrong",
+        body: message,
+        icon: ShieldAlert,
+        accent: "from-amber-50 to-orange-50 text-amber-700 ring-amber-100/80",
+      },
+    };
+
+    const c = copy[kind];
+    const Icon = c.icon;
+
     return (
-      <div className="min-h-screen bg-white p-8 sm:p-10 lg:p-12">
-        <p className="text-red-500">{error ?? "Course not found."}</p>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/course")}
-          className="mt-4 text-blue-600 hover:underline"
+      <CourseGateShell>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/50"
         >
-          Back to courses
-        </button>
-      </div>
+          <div
+            className={cn(
+              "bg-gradient-to-r px-8 py-10 text-center",
+              kind === "access" && "from-rose-50/90 via-white to-orange-50/50",
+              kind === "auth" && "from-slate-100/80 via-white to-slate-50/50",
+              kind === "notfound" && "from-slate-50 via-white to-teal-50/30",
+              kind === "generic" && "from-amber-50/80 via-white to-orange-50/40",
+            )}
+          >
+            <div
+              className={cn(
+                "mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ring-8",
+                c.accent,
+              )}
+            >
+              <Icon className="h-10 w-10" strokeWidth={1.5} />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              {c.title}
+            </h1>
+            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-slate-600">
+              {c.body}
+            </p>
+            {courseId != null && kind === "access" && (
+              <p className="mt-4 inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200/80">
+                Course ID · {courseId}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/50 px-6 py-6 sm:flex-row sm:justify-center sm:gap-4">
+            <Button
+              className="h-11 rounded-2xl bg-gradient-to-r from-teal-600 to-emerald-600 font-semibold shadow-md shadow-teal-600/15 hover:from-teal-500 hover:to-emerald-500"
+              onClick={() => router.push("/dashboard/course")}
+            >
+              <GraduationCap className="mr-2 h-4 w-4" />
+              My courses
+            </Button>
+            {kind === "access" && (
+              <Button
+                variant="outline"
+                className="h-11 rounded-2xl border-slate-200 bg-white"
+                onClick={() => router.push("/dashboard/enrollment")}
+              >
+                View enrollments
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      </CourseGateShell>
     );
   }
 

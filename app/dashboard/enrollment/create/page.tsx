@@ -16,7 +16,7 @@ import {
 import { getCourses, type CourseItem } from "@/services/course.service";
 import { createEnrollment } from "@/services/enrollment.service";
 import { getUsers, type UserItem } from "@/services/user.service";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function CreateEnrollmentPage() {
   const router = useRouter();

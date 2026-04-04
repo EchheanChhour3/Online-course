@@ -43,7 +43,7 @@ import {
   type CourseItem,
 } from "@/services/course.service";
 import { getTeachers, type TeacherItem } from "@/services/teacher.service";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 function slugify(text: string): string {
   return text
@@ -64,7 +64,7 @@ export default function CourseManagePage() {
   const { data: session, status } = useSession();
   const { role } = useRole();
 
-  const canManageCourses = role === "admin" || role === "teacher";
+  const canManageCourses = role === "admin";
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [teachers, setTeachers] = useState<TeacherItem[]>([]);
@@ -165,7 +165,7 @@ export default function CourseManagePage() {
   const resetForm = () => {
     setFormData({
       categoryId: String(categories[0]?.category_id ?? ""),
-      instructorId: role === "admin" && teachers[0] ? String(teachers[0].user_id) : String(session?.user?.id ?? ""),
+      instructorId: teachers[0] ? String(teachers[0].user_id) : "",
       title: "",
       description: "",
     });
@@ -335,8 +335,8 @@ export default function CourseManagePage() {
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             {canManageCourses
-              ? "Manage courses. Create, edit, or remove courses. Only admins and teachers can manage."
-              : "View course catalog."}
+              ? "Manage courses. Create, edit, or remove courses."
+              : "View and manage course content."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -366,11 +366,6 @@ export default function CourseManagePage() {
             <Button
               onClick={() => {
                 resetForm();
-                setFormData((p) => ({
-                  ...p,
-                  categoryId: String(categories[0]?.category_id ?? ""),
-                  instructorId: role === "admin" && teachers[0] ? String(teachers[0].user_id) : String(session?.user?.id ?? ""),
-                }));
                 setIsCreateOpen(true);
               }}
               className="bg-blue-600 hover:bg-blue-700"
@@ -495,24 +490,7 @@ export default function CourseManagePage() {
                   <SelectValue placeholder="Select instructor" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(role === "admin"
-                    ? teachers
-                    : (() => {
-                        const filtered = teachers.filter(
-                          (t) => String(t.user_id) === String(session?.user?.id)
-                        );
-                        if (filtered.length === 0 && session?.user?.id) {
-                          return [
-                            {
-                              user_id: Number(session.user.id),
-                              full_name: session.user.name ?? session.user.email ?? "Me",
-                              email: session.user.email,
-                            } as TeacherItem,
-                          ];
-                        }
-                        return filtered;
-                      })()
-                  ).map((t) => (
+                  {teachers.map((t) => (
                     <SelectItem key={t.user_id} value={String(t.user_id)}>
                       {t.full_name}
                       {t.email && ` (${t.email})`}
@@ -520,12 +498,7 @@ export default function CourseManagePage() {
                   ))}
                 </SelectContent>
               </Select>
-              {role === "teacher" && (
-                <p className="text-xs text-gray-500">
-                  You will be assigned as the course instructor.
-                </p>
-              )}
-              {role === "admin" && teachers.length === 0 && (
+              {teachers.length === 0 && (
                 <p className="text-sm text-amber-600">
                   No teachers available. Add teachers first in Manage Teachers.
                 </p>
@@ -606,7 +579,7 @@ export default function CourseManagePage() {
                 </SelectContent>
               </Select>
             </div>
-            {role === "admin" && teachers.length > 0 && (
+            {teachers.length > 0 && (
               <div className="space-y-2">
                 <Label htmlFor="edit-instructor">Instructor</Label>
                 <Select

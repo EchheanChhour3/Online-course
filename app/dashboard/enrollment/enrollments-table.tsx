@@ -24,7 +24,7 @@ import type { EnrollmentItem } from "@/services/enrollment.service";
 import { updateEnrollment, deleteEnrollment } from "@/services/enrollment.service";
 import type { CourseItem } from "@/services/course.service";
 import type { UserItem } from "@/services/user.service";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 interface EnrollmentsTableProps {
   role: ViewRole;

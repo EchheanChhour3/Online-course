@@ -3,7 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { Button } from "./ui/button";
 import { getProfile } from "@/services/auth.service";
 import {
@@ -24,6 +24,7 @@ import {
   BookOpen,
   Users,
   FolderEdit,
+  UsersRound,
 } from "lucide-react";
 import { useRole, type ViewRole } from "@/contexts/role-context";
 
@@ -104,7 +105,13 @@ export default function EnrollmentSidebar({
       label: "Enrollment",
       icon: <BookOpen className="w-5 h-5" />,
       href: "/dashboard/enrollment",
-      roles: ["admin", "teacher", "student"] as ViewRole[],
+      roles: ["admin", "student"] as ViewRole[],
+    },
+    {
+      label: "Groups",
+      icon: <UsersRound className="w-5 h-5" />,
+      href: "/dashboard/groups",
+      roles: ["admin"] as ViewRole[],
     },
     {
       label: "Teachers",
@@ -127,7 +134,7 @@ export default function EnrollmentSidebar({
       visibleHrefs.some(
         (href) =>
           pathname === href ||
-          (href !== "/dashboard" && pathname.startsWith(href + "/"))
+          (href !== "/dashboard" && pathname.startsWith(href + "/")),
       );
     if (!isOnVisiblePage) {
       const defaultHref = visibleHrefs[0] ?? "/dashboard/course";
@@ -166,7 +173,6 @@ export default function EnrollmentSidebar({
             )}
           </div>
         </div>
-
       </div>
 
       {/* Collapse Button */}
@@ -194,7 +200,8 @@ export default function EnrollmentSidebar({
           {mainNavItems.map((item) => {
             const isActive =
               pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
+              (item.href !== "/dashboard" &&
+                pathname.startsWith(item.href + "/"));
             return (
               <button
                 key={item.href}

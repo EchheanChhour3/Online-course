@@ -42,7 +42,7 @@ import {
   deleteLesson,
 } from "@/services/lesson.service";
 import { useRole } from "@/contexts/role-context";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function CourseContentManagePage() {
   const params = useParams();

@@ -15,10 +15,9 @@ import { useRole } from "@/contexts/role-context";
 import { getCourses, type CourseItem } from "@/services/course.service";
 import {
   getEnrollmentsByUserId,
-  createEnrollment,
   type EnrollmentItem,
 } from "@/services/enrollment.service";
-import { toast } from "sonner";
+import { getGroupCourseIdsByUser } from "@/services/group.service";
 
 export default function CoursePage() {
   const { data: session, status } = useSession();
@@ -31,7 +30,10 @@ export default function CoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [allCourses, setAllCourses] = useState<CourseItem[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentItem[]>([]);
-  const [enrollingId, setEnrollingId] = useState<number | null>(null);
+  const [groupCourseIds, setGroupCourseIds] = useState<number[]>([]);
+
+  const isStudent = role === "student";
+  const isTeacher = role === "teacher";
 
   const fetchData = useCallback(async () => {
     if (status === "unauthenticated") {
@@ -50,18 +52,21 @@ export default function CoursePage() {
     setLoading(true);
     setError(null);
     try {
-      const [coursesRes, enrollmentsList] = await Promise.all([
+      const [coursesRes, enrollmentsList, groupIds] = await Promise.all([
         getCourses(token, { page: 1, size: 100 }),
         userId ? getEnrollmentsByUserId(token, userId) : Promise.resolve([]),
+        userId ? getGroupCourseIdsByUser(token, userId).catch(() => []) : Promise.resolve([]),
       ]);
       setAllCourses(coursesRes.payload?.items ?? []);
       setEnrollments(Array.isArray(enrollmentsList) ? enrollmentsList : []);
+      setGroupCourseIds(Array.isArray(groupIds) ? groupIds : []);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load courses"
       );
       setAllCourses([]);
       setEnrollments([]);
+      setGroupCourseIds([]);
     } finally {
       setLoading(false);
     }
@@ -73,7 +78,6 @@ export default function CoursePage() {
   }, [fetchData, status]);
 
   const handleSearch = (value: string) => {
-    // Client-side filter is handled via search state if needed
     console.log("Search:", value);
   };
 
@@ -81,8 +85,6 @@ export default function CoursePage() {
     const firstEnrolled = enrollments[0];
     if (firstEnrolled?.course_id) {
       router.push(`/dashboard/course/${firstEnrolled.course_id}`);
-    } else {
-      router.push("/dashboard/course/basic-ux");
     }
   };
 
@@ -94,55 +96,40 @@ export default function CoursePage() {
     router.push(`/dashboard/course/${courseId}`);
   };
 
-  const handleEnroll = async (courseId: number) => {
-    if (!userId || !session?.accessToken) {
-      toast.error("Please sign in to enroll.");
-      return;
-    }
-    setEnrollingId(courseId);
-    try {
-      await createEnrollment(session.accessToken, userId, courseId);
-      toast.success("Enrolled successfully!");
-      await fetchData();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to enroll";
-      toast.error(msg);
-    } finally {
-      setEnrollingId(null);
-    }
-  };
-
   const enrolledCourseIds = new Set(enrollments.map((e) => e.course_id));
+  const groupCourseIdSet = new Set(groupCourseIds);
   const courseById = new Map(allCourses.map((c) => [c.course_id, c]));
 
-  const inProgressCourses: CourseCardProps[] = enrollments.map((e) => {
+  // Courses the student has through direct enrollment
+  const enrolledCourses: CourseCardProps[] = enrollments.map((e) => {
     const course = courseById.get(e.course_id);
-    const author = course?.instructor_name ?? "—";
     return {
-      variant: "progress",
+      variant: "progress" as const,
       title: e.course_name ?? course?.course_name ?? "Untitled",
-      author,
-      progress: 0, // API could provide progress later
+      author: course?.instructor_name ?? "—",
+      progress: 0,
       courseId: e.course_id,
       onViewCourse: handleViewCourse,
       onContinue: () => handleContinue(e.course_id),
     };
   });
 
-  const availableCourses: CourseCardProps[] = allCourses
-    .filter((c) => !enrolledCourseIds.has(c.course_id))
+  // Courses the student has through group membership (not already enrolled directly)
+  const groupOnlyCourses: CourseCardProps[] = allCourses
+    .filter((c) => groupCourseIdSet.has(c.course_id) && !enrolledCourseIds.has(c.course_id))
     .map((c) => ({
-      variant: "enrollment" as const,
+      variant: "progress" as const,
       title: c.course_name ?? "Untitled",
       author: c.instructor_name ?? "—",
-      rating: 4.5,
-      duration: undefined,
+      progress: 0,
       courseId: c.course_id,
       onViewCourse: handleViewCourse,
-      onEnroll: () => handleEnroll(c.course_id),
-      hideActions: false,
+      onContinue: () => handleContinue(c.course_id),
     }));
 
+  const allStudentCourses = [...enrolledCourses, ...groupOnlyCourses];
+
+  // Admin catalog (view-only, no enroll)
   const catalogCourses: CourseCardProps[] = allCourses.map((c) => ({
     variant: "enrollment" as const,
     title: c.course_name ?? "Untitled",
@@ -151,12 +138,8 @@ export default function CoursePage() {
     duration: undefined,
     courseId: c.course_id,
     onViewCourse: handleViewCourse,
-    onEnroll: () => handleEnroll(c.course_id),
-    hideActions: role === "admin",
+    hideActions: true,
   }));
-
-  const isStudent = role === "student";
-  const isTeacher = role === "teacher";
 
   if (loading) {
     return (
@@ -208,31 +191,25 @@ export default function CoursePage() {
         onSearch={handleSearch}
       />
 
-      {isStudent && (
+      {isStudent && allStudentCourses.length > 0 && (
         <RecommendedCourseBanner onStartLearning={handleStartLearning} />
       )}
 
       {isStudent ? (
-        <>
-          <section className="mb-12">
-            <CoursesSectionHeader
-              title="My courses"
-              seeAllHref="/dashboard/course"
-            />
-            <CourseGrid courses={inProgressCourses} />
-          </section>
-          <section>
-            <CoursesSectionHeader
-              title="All courses"
-              seeAllHref="/dashboard/course"
-            />
-            <CourseGrid courses={availableCourses} hideActions={false} />
-          </section>
-        </>
+        <section>
+          <CoursesSectionHeader title="My Courses" />
+          {allStudentCourses.length > 0 ? (
+            <CourseGrid courses={allStudentCourses} />
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              You are not enrolled in any courses yet. Please contact your administrator.
+            </div>
+          )}
+        </section>
       ) : (
         <section>
           <CoursesSectionHeader title="Course catalog" />
-          <CourseGrid courses={catalogCourses} hideActions={role === "admin"} />
+          <CourseGrid courses={catalogCourses} hideActions={true} />
         </section>
       )}
     </motion.div>
